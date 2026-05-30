@@ -15,6 +15,9 @@ public class TrayApp : ApplicationContext
     // für Dienst/Pipe/Config-Ordner bleibt weiterhin "wg-autoswitch".
     private const string AppName = "GuardSwitch";
 
+    // Spenden-Link (Revolut Pocket von @D3rPaPaH0d3n).
+    private const string DonateUrl = "https://revolut.me/mkainer/pocket/QAt1Q0Ntsb";
+
     private readonly NotifyIcon _icon = new();
     private readonly PipeClient _client = new();
     private readonly System.Windows.Forms.Timer _pollTimer;
@@ -45,6 +48,7 @@ public class TrayApp : ApplicationContext
     private ToolStripMenuItem _miReloadCfg = null!;
     private ToolStripMenuItem _miOpenLog = null!;
     private ToolStripMenuItem _miOpenCfg = null!;
+    private ToolStripMenuItem _miDonate = null!;
     private ToolStripMenuItem _miExit = null!;
 
     public TrayApp()
@@ -171,6 +175,13 @@ public class TrayApp : ApplicationContext
             catch { /* nichts */ }
         };
 
+        _miDonate = new ToolStripMenuItem("💚 Spenden");
+        _miDonate.Click += (_, _) =>
+        {
+            try { Process.Start(new ProcessStartInfo(DonateUrl) { UseShellExecute = true }); }
+            catch { /* nichts */ }
+        };
+
         _miExit = new ToolStripMenuItem("Tray beenden");
         _miExit.Click += (_, _) => ExitThread();
 
@@ -179,7 +190,7 @@ public class TrayApp : ApplicationContext
             _miStatus, _miPause, _sep1,
             _miReloadCfg, _miOpenCfg, _miOpenLog,
             new ToolStripSeparator(),
-            _miExit
+            _miDonate, _miExit
         });
         _icon.ContextMenuStrip = menu;
     }
