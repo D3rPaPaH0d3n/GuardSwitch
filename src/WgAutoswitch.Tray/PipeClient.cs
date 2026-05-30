@@ -8,19 +8,24 @@ public class PipeClient
 {
     public async Task<CommandResponse> SendAsync(Command cmd, CancellationToken ct)
     {
-        const int maxAttempts = 3;
+        // Kurze Timeouts + mehrere Versuche statt eines langen Timeouts: die Lücke
+        // zwischen zwei Pipe-Verbindungen ist nur Millisekunden lang, also lieber
+        // schnell erneut versuchen, als das Tray-UI (pollt alle 3 s) sekundenlang
+        // zu blockieren. Worst-Case ~3,65 s, wenn der Service wirklich weg ist.
+        const int maxAttempts = 4;
+        const int connectTimeoutMs = 800;
         Exception? lastEx = null;
         for (int attempt = 0; attempt < maxAttempts; attempt++)
         {
             if (attempt > 0)
             {
-                try { await Task.Delay(200 * attempt, ct); }
+                try { await Task.Delay(150, ct); }
                 catch (OperationCanceledException) { break; }
             }
             try
             {
                 using var pipe = new NamedPipeClientStream(".", Paths.PipeName, PipeDirection.InOut, PipeOptions.Asynchronous);
-                await pipe.ConnectAsync(3000, ct);
+                await pipe.ConnectAsync(connectTimeoutMs, ct);
 
                 using var writer = new StreamWriter(pipe, leaveOpen: true) { AutoFlush = true };
                 using var reader = new StreamReader(pipe, leaveOpen: true);
