@@ -201,9 +201,9 @@ public class TrayApp : ApplicationContext
         if (!resp.Success || resp.Status == null)
         {
             _consecutiveErrors++;
-            // Erste paar Fehler tolerieren (Pipe-Server kann zwischen zwei Verbindungen
-            // kurz "weg" sein) - Anzeige unverändert lassen
-            if (_consecutiveErrors < ErrorThreshold && _last != null)
+            // Transiente Pipe-Fehler (Server zwischen zwei Verbindungen, kurzer Aussetzer)
+            // tolerieren – auch beim ersten Start, damit kein Rot-Aufflackern entsteht.
+            if (_consecutiveErrors < ErrorThreshold)
                 return;
 
             _last = null;

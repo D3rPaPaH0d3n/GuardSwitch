@@ -21,7 +21,15 @@ public class PipeHostedService : BackgroundService
         _controller = controller;
     }
 
-    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    protected override Task ExecuteAsync(CancellationToken stoppingToken)
+    {
+        // Two concurrent accept loops: while one instance is serving a client,
+        // the other is already waiting for the next connection. This eliminates
+        // the brief gap between connections that caused "Pipe Broken" errors.
+        return Task.WhenAll(AcceptLoopAsync(stoppingToken), AcceptLoopAsync(stoppingToken));
+    }
+
+    private async Task AcceptLoopAsync(CancellationToken stoppingToken)
     {
         while (!stoppingToken.IsCancellationRequested)
         {
