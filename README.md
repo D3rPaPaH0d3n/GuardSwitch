@@ -1,4 +1,6 @@
-# wg-autoswitch
+# GuardSwitch
+
+<sub>(technischer Bezeichner / Repo-Name: `wg-autoswitch` — Dienst, Pipe und Config-Ordner heißen weiterhin so)</sub>
 
 Automatisches Aktivieren/Deaktivieren eines WireGuard-Tunnels unter Windows
 basierend auf der Erkennung des Heimnetzwerks. Mit Tray-Icon zur Statusanzeige
@@ -86,7 +88,7 @@ Als Admin in PowerShell:
 
 ```powershell
 sc create wg-autoswitch binPath= "C:\Tools\wg-autoswitch\WgAutoswitch.Service.exe" `
-    DisplayName= "WireGuard Auto-Switch" `
+    DisplayName= "GuardSwitch" `
     start= auto
 sc description wg-autoswitch "Aktiviert/deaktiviert WireGuard-Tunnel je nach Netzwerk."
 sc start wg-autoswitch

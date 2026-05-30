@@ -4,7 +4,7 @@
 ; https://jrsoftware.org/isdl.php
 ; ===========================================================
 
-#define MyAppName "WireGuard Auto-Switch"
+#define MyAppName "GuardSwitch"
 #define MyAppShortName "wg-autoswitch"
 ; MyAppVersion kann via Kommandozeile überschrieben werden:
 ;   ISCC.exe /DMyAppVersion=1.2.3 wg-autoswitch.iss
@@ -116,7 +116,7 @@ begin
   // Hinweisseite: WireGuard muss vorab installiert sein
   WireGuardCheckPage := CreateOutputMsgMemoPage(wpWelcome,
     'Voraussetzungen', 'Bitte vorher prüfen',
-    'Damit dieser Auto-Switch funktioniert, muss Folgendes bereits eingerichtet sein:',
+    'Damit GuardSwitch funktioniert, muss Folgendes bereits eingerichtet sein:',
     'WICHTIG - bitte vor der Installation prüfen:' + #13#10 +
     '' + #13#10 +
     '1) WireGuard für Windows ist installiert.' + #13#10 +
@@ -145,7 +145,7 @@ begin
 
   // Konfigurationsseite mit Eingabefeldern
   ConfigPage := CreateInputQueryPage(wpSelectTasks,
-    'Konfiguration', 'Grunddaten für den Auto-Switch',
+    'Konfiguration', 'Grunddaten für GuardSwitch',
     'Tunnelname ist Pflicht. Für die Heim-Erkennung reicht ein Feld; mehrere ' +
     'erhöhen die Treffsicherheit. Anpassbar später unter Startmenü -> ' +
     'Konfiguration bearbeiten.');

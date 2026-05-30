@@ -11,6 +11,10 @@ namespace WgAutoswitch.Tray;
 
 public class TrayApp : ApplicationContext
 {
+    // Sichtbarer App-Name (Tooltip/Benachrichtigungen). Der technische Bezeichner
+    // für Dienst/Pipe/Config-Ordner bleibt weiterhin "wg-autoswitch".
+    private const string AppName = "GuardSwitch";
+
     private readonly NotifyIcon _icon = new();
     private readonly PipeClient _client = new();
     private readonly System.Windows.Forms.Timer _pollTimer;
@@ -47,7 +51,7 @@ public class TrayApp : ApplicationContext
     {
         BuildIcons();
         BuildMenu();
-        _icon.Text = "wg-autoswitch";
+        _icon.Text = AppName;
         _icon.Visible = true;
         _icon.DoubleClick += async (_, _) => await RefreshAsync();
         SetIcon(IconState.Unknown);
@@ -193,7 +197,7 @@ public class TrayApp : ApplicationContext
 
             _last = null;
             SetIcon(IconState.Error);
-            _icon.Text = $"wg-autoswitch: {resp.Error ?? "Service nicht erreichbar"}";
+            _icon.Text = $"{AppName}: {resp.Error ?? "Service nicht erreichbar"}";
             _miStatus.Text = "Service nicht erreichbar";
             _miPause.Enabled = false;
             UpdateTunnelMenu(null);
@@ -213,7 +217,7 @@ public class TrayApp : ApplicationContext
         var tooltip = resp.Status.AutoModeEnabled
             ? (resp.Status.AtHome ? "Zuhause - Tunnel aus" : "Unterwegs - Tunnel an")
             : "Pausiert";
-        _icon.Text = $"wg-autoswitch: {tooltip}";
+        _icon.Text = $"{AppName}: {tooltip}";
         _miStatus.Text = $"{tooltip} ({resp.Status.LastDetectionReason})";
 
         UpdateTunnelMenu(resp.Status);
@@ -264,9 +268,9 @@ public class TrayApp : ApplicationContext
     private void ShowResult(CommandResponse resp, string okText)
     {
         if (resp.Success)
-            _icon.ShowBalloonTip(2000, "wg-autoswitch", okText, ToolTipIcon.Info);
+            _icon.ShowBalloonTip(2000, AppName, okText, ToolTipIcon.Info);
         else
-            _icon.ShowBalloonTip(3000, "wg-autoswitch - Fehler", resp.Error ?? "Unbekannt", ToolTipIcon.Warning);
+            _icon.ShowBalloonTip(3000, $"{AppName} - Fehler", resp.Error ?? "Unbekannt", ToolTipIcon.Warning);
         _ = RefreshAsync();
     }
 
