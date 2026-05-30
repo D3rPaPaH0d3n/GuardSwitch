@@ -77,6 +77,11 @@ Name: "{group}\{cm:UninstallProgram,{#MyAppName}}"; Filename: "{uninstallexe}"
 ; Autostart per Verknüpfung im Startup-Ordner (wird nur erstellt, wenn Task gewählt)
 Name: "{userstartup}\{#MyAppName} Tray"; Filename: "{app}\tray\{#MyTrayExe}"; Tasks: autostart
 
+[InstallDelete]
+; Alte Autostart-Verknüpfung aus früheren Versionen entfernen (vor Umbenennung in GuardSwitch)
+Type: files; Name: "{userstartup}\WireGuard Auto-Switch Tray.lnk"
+Type: files; Name: "{userstartup}\wg-autoswitch Tray.lnk"
+
 [Run]
 ; Neuen Service registrieren (Stop+Delete eines existierenden Vorgängers
 ; passiert schon vor der Datei-Extraktion in CurStepChanged(ssInstall),
