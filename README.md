@@ -1,17 +1,60 @@
-# GuardSwitch
+<div align="center">
 
-<sub>(technischer Bezeichner / Repo-Name: `wg-autoswitch` — Dienst, Pipe und Config-Ordner heißen weiterhin so)</sub>
+# 🛡️ GuardSwitch
 
+### Dein WireGuard-VPN schaltet sich selbst ein – immer dann, wenn du es brauchst.
+
+**Zuhause aus. Unterwegs an. Vollautomatisch.**
+
+[![Download](https://img.shields.io/badge/⬇_Download-0078D4?style=for-the-badge)](https://github.com/D3rPaPaH0d3n/wg-autoswitch/releases/latest)
+[![Plattform](https://img.shields.io/badge/Windows_10/11-0078D4?style=for-the-badge&logo=windows&logoColor=white)](#)
 [![Spenden](https://img.shields.io/badge/💚_Spenden-FF5F5F?style=for-the-badge)](https://revolut.me/mkainer/pocket/QAt1Q0Ntsb)
 
-Automatisches Aktivieren/Deaktivieren eines WireGuard-Tunnels unter Windows
-basierend auf der Erkennung des Heimnetzwerks. Mit Tray-Icon zur Statusanzeige
-und Pause-Funktion als Notausschalter.
+<sub>Technischer Bezeichner / Repo-Name: `wg-autoswitch` — Dienst, Pipe und Config-Ordner heißen weiterhin so.</sub>
 
-Schließt eine Lücke des offiziellen WireGuard-Clients für Windows: die
-"Trusted-Networks"-Funktion gibt es nur unter iOS/macOS, nicht unter Windows.
-Diese App erkennt das Heimnetz lokal anhand von SSID, Router-MAC oder einem
-Heim-Gerät - ohne Cloud, ohne externen Dienst.
+</div>
+
+---
+
+## Was ist GuardSwitch?
+
+GuardSwitch ist ein kleiner, ressourcenschonender Windows-Begleiter für
+[WireGuard](https://www.wireguard.com/). Er erkennt automatisch, ob du **zuhause**
+oder **unterwegs** bist, und schaltet deinen VPN-Tunnel entsprechend ein oder aus –
+ganz ohne dass du daran denken musst.
+
+> 💡 **Warum überhaupt?** Der offizielle WireGuard-Client für Windows hat keine
+> „Trusted Networks"-Funktion – die gibt es nur auf iOS und macOS. GuardSwitch
+> schließt genau diese Lücke. Die Heimnetz-Erkennung passiert **komplett lokal**
+> anhand von WLAN-Name, Router-MAC oder einem Gerät in deinem Netz – **keine Cloud,
+> kein externer Dienst, keine Daten verlassen deinen PC.**
+
+## ✨ Features
+
+- 🔄 **Automatisches Umschalten** – Tunnel an unterwegs, aus zuhause. Du machst nichts.
+- 🏠 **Zuverlässige Heimerkennung** – über WLAN-SSID, Router-MAC und/oder erreichbares
+  Heim-Gerät. Mehrere Kriterien kombinierbar für maximale Treffsicherheit.
+- 🧠 **Stabil statt nervös** – Settle-Delay nach Netzwerkwechseln, Wiederholungs-Checks
+  und asymmetrische Hysterese (schnell schützen, ruhig abschalten) verhindern
+  Fehlschaltungen und Flackern.
+- 🔒 **Privat by Design** – alles läuft offline auf deinem Rechner.
+- 🛡️ **Modernes Tray-Icon** – Fluent-Schild, passt sich an helle/dunkle Taskleiste an,
+  Status auf einen Blick an Farbe **und** Symbol erkennbar.
+- 🛑 **Notausschalter** – Auto-Modus jederzeit per Tray-Klick pausieren. WireGuard selbst
+  wird dabei nie verändert.
+- 📦 **Einfache Installation & Updates** – ein Installer, Updates laufen einfach drüber,
+  deine Konfiguration bleibt erhalten.
+
+## 🚀 So funktioniert's
+
+1. **Erkennen** – GuardSwitch prüft im Hintergrund Merkmale deines aktuellen Netzes
+   (WLAN-Name, Router-MAC, ein Heim-Gerät).
+2. **Entscheiden** – Stimmen genug Merkmale → „zuhause". Sonst → „unterwegs".
+   Eine Hysterese sorgt dafür, dass kurze Schwankungen nichts auslösen.
+3. **Schalten** – Zuhause wird der Tunnel deaktiviert, unterwegs aktiviert –
+   über den ganz normalen WireGuard-Dienst.
+
+Den Status siehst du jederzeit am Tray-Icon. Fertig.
 
 ## Download
 
@@ -112,18 +155,24 @@ mit Default-Werten erzeugt. Anpassen:
 [general]
 enabled = true
 check_interval_seconds = 10
-hysteresis_count = 2          # Wieviele aufeinanderfolgende gleiche Ergebnisse vor Wechsel
-min_checks_required = 2       # Mindestens N positive Checks für "zuhause"
+settle_delay_seconds = 3        # Nach Netzwerkwechsel kurz warten, bevor gemessen wird
+check_retries = 2               # Wackelige Checks (ARP/Erreichbarkeit) mehrfach versuchen
+hysteresis_count_home = 3       # So oft "zuhause" in Folge, bevor der Tunnel AUS geht (ruhig)
+hysteresis_count_away = 1       # So oft "unterwegs" in Folge, bevor der Tunnel AN geht (schnell)
+min_checks_required = 1         # Mindestens N positive Checks für "zuhause"
 
 [[tunnels]]
-name = "home"                 # Entspricht dem Service WireGuardTunnel$home
+name = "home"                   # Entspricht dem Service WireGuardTunnel$home
 
 [home_detection]
-gateway_mac = "AA:BB:CC:DD:EE:FF"  # MAC der FritzBox 5690 Pro
-ssid = "DeinWLAN"
-reachable_host = "192.168.178.5"   # Pi DNS-Master
+gateway_mac = "AA:BB:CC:DD:EE:FF"  # MAC deines Routers (z. B. FritzBox)
+ssid = "DeinWLAN"                  # Name deines Heim-WLANs
+reachable_host = "192.168.178.5"   # Ein Gerät, das es nur zuhause gibt (z. B. NAS/Pi)
 reachable_port = 53
 ```
+
+> 💡 Du musst nicht alle drei Kriterien setzen – eines reicht. Mehrere kombiniert
+> machen die Erkennung aber treffsicherer.
 
 Nach Änderungen entweder Service neustarten oder im Tray
 "Konfiguration neu laden" klicken.
