@@ -253,8 +253,11 @@ begin
     '[general]' + #13#10 +
     'enabled = true' + #13#10 +
     'check_interval_seconds = 10' + #13#10 +
-    'hysteresis_count = 2' + #13#10 +
-    'min_checks_required = ' + IntToStr(CheckCount) + #13#10 +
+    'settle_delay_seconds = 3' + #13#10 +
+    'check_retries = 2' + #13#10 +
+    'hysteresis_count_home = 3' + #13#10 +
+    'hysteresis_count_away = 1' + #13#10 +
+    'min_checks_required = 1' + #13#10 +
     '' + #13#10 +
     '[[tunnels]]' + #13#10 +
     'name = "' + TunnelName + '"' + #13#10 +

@@ -33,7 +33,12 @@ public class AppConfig
         sb.AppendLine("[general]");
         sb.AppendLine($"enabled = {General.Enabled.ToString().ToLower()}");
         sb.AppendLine($"check_interval_seconds = {General.CheckIntervalSeconds}");
-        sb.AppendLine($"hysteresis_count = {General.HysteresisCount}");
+        sb.AppendLine($"settle_delay_seconds = {General.SettleDelaySeconds}");
+        sb.AppendLine($"check_retries = {General.CheckRetries}");
+        sb.AppendLine("# Asymmetrische Hysterese: langsam/sicher beim Abschalten (zuhause),");
+        sb.AppendLine("# schnell beim Einschalten (unterwegs).");
+        sb.AppendLine($"hysteresis_count_home = {General.HysteresisCountHome}");
+        sb.AppendLine($"hysteresis_count_away = {General.HysteresisCountAway}");
         sb.AppendLine($"min_checks_required = {General.MinChecksRequired}");
         sb.AppendLine();
         foreach (var tunnel in Tunnels)
@@ -57,28 +62,48 @@ public class AppConfig
 
     private static AppConfig FromModel(TomlTable model)
     {
+        // Per-Feld tolerant lesen: ein einzelner falsch editierter Wert darf nicht
+        // den ganzen Dienst lahmlegen. Fehlt/passt ein Feld nicht, greift der Default.
+        var d = CreateDefault();
         var cfg = new AppConfig();
         if (model.TryGetValue("general", out var gen) && gen is TomlTable gt)
         {
-            cfg.General.Enabled = gt.TryGetValue("enabled", out var e) && (bool)e;
-            cfg.General.CheckIntervalSeconds = gt.TryGetValue("check_interval_seconds", out var ci) ? (int)(long)ci : 10;
-            cfg.General.HysteresisCount = gt.TryGetValue("hysteresis_count", out var h) ? (int)(long)h : 2;
-            cfg.General.MinChecksRequired = gt.TryGetValue("min_checks_required", out var m) ? (int)(long)m : 2;
+            cfg.General.Enabled = GetBool(gt, "enabled", d.General.Enabled);
+            cfg.General.CheckIntervalSeconds = GetInt(gt, "check_interval_seconds", d.General.CheckIntervalSeconds);
+            cfg.General.SettleDelaySeconds = GetInt(gt, "settle_delay_seconds", d.General.SettleDelaySeconds);
+            cfg.General.CheckRetries = GetInt(gt, "check_retries", d.General.CheckRetries);
+            // hysteresis_count (alt) als Fallback für beide Richtungen akzeptieren.
+            var legacy = GetInt(gt, "hysteresis_count", d.General.HysteresisCountHome);
+            cfg.General.HysteresisCountHome = GetInt(gt, "hysteresis_count_home", legacy);
+            cfg.General.HysteresisCountAway = GetInt(gt, "hysteresis_count_away", d.General.HysteresisCountAway);
+            cfg.General.MinChecksRequired = GetInt(gt, "min_checks_required", d.General.MinChecksRequired);
         }
         if (model.TryGetValue("tunnels", out var tArr) && tArr is TomlTableArray arr)
         {
             foreach (var t in arr)
-                cfg.Tunnels.Add(new TunnelConfig { Name = (string)t["name"] });
+            {
+                if (t.TryGetValue("name", out var n) && n is string name && !string.IsNullOrWhiteSpace(name))
+                    cfg.Tunnels.Add(new TunnelConfig { Name = name });
+            }
         }
         if (model.TryGetValue("home_detection", out var hd) && hd is TomlTable hdt)
         {
-            cfg.HomeDetection.GatewayMac = hdt.TryGetValue("gateway_mac", out var gm) ? (string)gm : "";
-            cfg.HomeDetection.Ssid = hdt.TryGetValue("ssid", out var s) ? (string)s : "";
-            cfg.HomeDetection.ReachableHost = hdt.TryGetValue("reachable_host", out var rh) ? (string)rh : "";
-            cfg.HomeDetection.ReachablePort = hdt.TryGetValue("reachable_port", out var rp) ? (int)(long)rp : 0;
+            cfg.HomeDetection.GatewayMac = GetStr(hdt, "gateway_mac", "");
+            cfg.HomeDetection.Ssid = GetStr(hdt, "ssid", "");
+            cfg.HomeDetection.ReachableHost = GetStr(hdt, "reachable_host", "");
+            cfg.HomeDetection.ReachablePort = GetInt(hdt, "reachable_port", 0);
         }
         return cfg;
     }
+
+    private static bool GetBool(TomlTable t, string key, bool fallback)
+        => t.TryGetValue(key, out var v) && v is bool b ? b : fallback;
+
+    private static int GetInt(TomlTable t, string key, int fallback)
+        => t.TryGetValue(key, out var v) && v is long l ? (int)l : fallback;
+
+    private static string GetStr(TomlTable t, string key, string fallback)
+        => t.TryGetValue(key, out var v) && v is string s ? s : fallback;
 
     private static AppConfig CreateDefault() => new()
     {
@@ -86,8 +111,11 @@ public class AppConfig
         {
             Enabled = true,
             CheckIntervalSeconds = 10,
-            HysteresisCount = 2,
-            MinChecksRequired = 2
+            SettleDelaySeconds = 3,
+            CheckRetries = 2,
+            HysteresisCountHome = 3,
+            HysteresisCountAway = 1,
+            MinChecksRequired = 1
         },
         Tunnels = new List<TunnelConfig>
         {
@@ -107,8 +135,16 @@ public class GeneralConfig
 {
     public bool Enabled { get; set; } = true;
     public int CheckIntervalSeconds { get; set; } = 10;
-    public int HysteresisCount { get; set; } = 2;
-    public int MinChecksRequired { get; set; } = 2;
+    // Wartezeit nach einem Netzwerk-Event, bevor gemessen wird (ARP/Gateway/DHCP
+    // sollen erst zur Ruhe kommen). Verhindert Fehlmessungen mitten im Wechsel.
+    public int SettleDelaySeconds { get; set; } = 3;
+    // Zusätzliche Sample-Versuche pro flackeranfälligem Check (ARP, Reachability).
+    public int CheckRetries { get; set; } = 2;
+    // Asymmetrische Hysterese: wie viele stabile Messungen nötig sind, um den
+    // Tunnel ABzuschalten (zuhause erkannt) bzw. ANzuschalten (unterwegs erkannt).
+    public int HysteresisCountHome { get; set; } = 3;
+    public int HysteresisCountAway { get; set; } = 1;
+    public int MinChecksRequired { get; set; } = 1;
 }
 
 public class TunnelConfig

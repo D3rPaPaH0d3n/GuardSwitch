@@ -20,6 +20,11 @@ public class MainWorker : BackgroundService
     // Start "unterwegs" hängen, falls er gerade aus ist).
     private bool? _appliedAtHome;
 
+    // Backoff, falls eine Tunnel-Schaltung fehlschlägt (z. B. wireguard.exe kommt
+    // nicht hoch). Verhindert hektisches Wieder-und-wieder-Versuchen in jedem Tick.
+    private DateTime _nextApplyRetry = DateTime.MinValue;
+    private int _applyFailures;
+
     public MainWorker(ILogger<MainWorker> log, ServiceState state,
                       NetworkDetector detector, TunnelController controller)
     {
@@ -65,6 +70,16 @@ public class MainWorker : BackgroundService
                 var old = _wakeToken;
                 _wakeToken = new CancellationTokenSource();
                 old.Dispose();
+
+                // Settle: nach einem Netzwerk-Event kurz warten, bis ARP/Gateway/DHCP
+                // stehen. Misst man sofort, kommen die meisten Fehl-"unterwegs"-Meldungen
+                // zustande. Weitere Events während des Wartens entprellen sich so von selbst.
+                var settle = TimeSpan.FromSeconds(Math.Max(0, _state.Config.General.SettleDelaySeconds));
+                if (settle > TimeSpan.Zero)
+                {
+                    try { await Task.Delay(settle, stoppingToken); }
+                    catch (OperationCanceledException) { break; }
+                }
             }
         }
     }
@@ -95,8 +110,19 @@ public class MainWorker : BackgroundService
         }
 
         var detection = await _detector.DetectAsync(ct);
-        _state.LastAtHome = detection.AtHome;
         _state.LastDetectionReason = detection.Reason;
+
+        // Unklares Ergebnis → nichts umschalten, aktuellen Zustand halten und die
+        // Hysterese-Zählung zurücksetzen, damit kein gemischter Verlauf entsteht.
+        if (detection.Inconclusive)
+        {
+            _lastSeen = null;
+            _consecutiveCount = 0;
+            _state.NotifyChanged();
+            return;
+        }
+
+        _state.LastAtHome = detection.AtHome;
 
         // Hysterese
         if (_lastSeen == detection.AtHome)
@@ -109,27 +135,50 @@ public class MainWorker : BackgroundService
             _consecutiveCount = 1;
         }
 
-        var threshold = Math.Max(1, _state.Config.General.HysteresisCount);
+        // Asymmetrisch: schnell den Tunnel AN (unterwegs erkannt, Schutz), aber
+        // langsam/sicher den Tunnel AUS (zuhause erkannt).
+        var threshold = detection.AtHome
+            ? Math.Max(1, _state.Config.General.HysteresisCountHome)
+            : Math.Max(1, _state.Config.General.HysteresisCountAway);
         var stable = _consecutiveCount >= threshold;
 
-        if (stable && detection.AtHome != _appliedAtHome)
+        var needsApply = stable && detection.AtHome != _appliedAtHome;
+        if (needsApply && DateTime.UtcNow >= _nextApplyRetry)
         {
             // Aktion: zuhause -> alle Tunnel AUS, unterwegs -> alle Tunnel AN
             var shouldBeActive = !detection.AtHome;
             _log.LogInformation("Wechsle Tunnel-Zustand: AtHome={AtHome}, ShouldBeActive={Active}. Grund: {Reason}",
                                 detection.AtHome, shouldBeActive, detection.Reason);
 
+            bool allOk = true;
             foreach (var tunnel in _state.Config.Tunnels)
             {
-                await _controller.SetActiveAsync(tunnel.Name, shouldBeActive, ct);
+                var ok = await _controller.SetActiveAsync(tunnel.Name, shouldBeActive, ct);
+                allOk &= ok;
                 _state.CurrentTunnels[tunnel.Name] = _controller.GetStatus(tunnel.Name);
             }
 
-            _appliedAtHome = detection.AtHome;
-            _state.LastChange = DateTime.Now;
-            _state.LastChangeReason = detection.AtHome
-                ? $"Heimnetz erkannt → Tunnel AUS ({detection.Reason})"
-                : $"Heimnetz verlassen → Tunnel AN ({detection.Reason})";
+            if (allOk)
+            {
+                // Nur bei tatsächlichem Erfolg als angewendet verbuchen.
+                _appliedAtHome = detection.AtHome;
+                _applyFailures = 0;
+                _nextApplyRetry = DateTime.MinValue;
+                _state.LastChange = DateTime.Now;
+                _state.LastChangeReason = detection.AtHome
+                    ? $"Heimnetz erkannt → Tunnel AUS ({detection.Reason})"
+                    : $"Heimnetz verlassen → Tunnel AN ({detection.Reason})";
+            }
+            else
+            {
+                // Fehlschlag NICHT als erledigt verbuchen → wird erneut versucht,
+                // aber mit wachsendem Abstand (max. 60 s), um Thrashing zu vermeiden.
+                _applyFailures++;
+                var backoff = TimeSpan.FromSeconds(Math.Min(60, 5 * _applyFailures));
+                _nextApplyRetry = DateTime.UtcNow + backoff;
+                _log.LogWarning("Tunnel-Wechsel fehlgeschlagen (Versuch {N}), erneuter Versuch in {Sec}s",
+                                _applyFailures, backoff.TotalSeconds);
+            }
         }
 
         _state.NotifyChanged();

@@ -19,92 +19,138 @@ public class NetworkDetector
         _state = state;
     }
 
-    public record DetectionResult(bool AtHome, string Reason, int Score, int MaxScore);
+    // Drei Zustände statt nur ja/nein: "Unknown" heißt "Check nicht anwendbar oder
+    // nicht messbar" (z. B. SSID per LAN-Kabel) und darf weder für noch gegen
+    // "zuhause" zählen.
+    private enum CheckResult { Yes, No, Unknown }
+
+    // Inconclusive: zu wenig belastbare Checks → wir raten NICHT, der Aufrufer
+    // behält den aktuellen Zustand bei.
+    public record DetectionResult(bool AtHome, bool Inconclusive, string Reason, int YesVotes, int Applicable);
 
     public async Task<DetectionResult> DetectAsync(CancellationToken ct)
     {
         var cfg = _state.Config.HomeDetection;
-        var min = _state.Config.General.MinChecksRequired;
+        var retries = Math.Max(0, _state.Config.General.CheckRetries);
         var reasons = new List<string>();
-        int score = 0, available = 0;
+        int yes = 0, applicable = 0, configured = 0;
+
+        void Tally(CheckResult r, string label, string detail = "")
+        {
+            switch (r)
+            {
+                case CheckResult.Yes:
+                    yes++; applicable++; reasons.Add($"{label} ✓"); break;
+                case CheckResult.No:
+                    applicable++; reasons.Add($"{label} ✗{detail}"); break;
+                default:
+                    reasons.Add($"{label} ? (unbekannt{detail})"); break;
+            }
+        }
 
         // 1. Gateway-MAC vergleichen (zuverlässigster Check)
         if (!string.IsNullOrWhiteSpace(cfg.GatewayMac))
         {
-            available++;
-            var mac = GetDefaultGatewayMac();
-            if (mac != null && string.Equals(mac, NormalizeMac(cfg.GatewayMac), StringComparison.OrdinalIgnoreCase))
-            {
-                score++;
-                reasons.Add("Gateway-MAC ✓");
-            }
-            else
-            {
-                reasons.Add($"Gateway-MAC ✗ (gefunden: {mac ?? "n/a"})");
-            }
+            configured++;
+            var mac = await GetDefaultGatewayMacAsync(retries, ct);
+            CheckResult r = mac == null
+                ? CheckResult.Unknown // ARP/Gateway nicht ermittelbar → nicht als "nein" werten
+                : string.Equals(mac, NormalizeMac(cfg.GatewayMac), StringComparison.OrdinalIgnoreCase)
+                    ? CheckResult.Yes : CheckResult.No;
+            Tally(r, "Gateway-MAC", mac == null ? "" : $", gefunden: {mac}");
         }
 
         // 2. WLAN-SSID
         if (!string.IsNullOrWhiteSpace(cfg.Ssid))
         {
-            available++;
-            var ssid = GetCurrentSsid();
-            if (string.Equals(ssid, cfg.Ssid, StringComparison.Ordinal))
-            {
-                score++;
-                reasons.Add("SSID ✓");
-            }
-            else
-            {
-                reasons.Add($"SSID ✗ (aktuell: {ssid ?? "n/a"})");
-            }
+            configured++;
+            var (ssid, hasWifi) = GetCurrentSsid();
+            CheckResult r = !hasWifi
+                ? CheckResult.Unknown // kein WLAN-Adapter aktiv (z. B. LAN-Kabel) → nicht werten
+                : string.Equals(ssid, cfg.Ssid, StringComparison.Ordinal)
+                    ? CheckResult.Yes : CheckResult.No;
+            Tally(r, "SSID", hasWifi && ssid != null ? $", aktuell: {ssid}" : "");
         }
 
-        // 3. Reachability eines internen Hosts
+        // 3. Reachability eines internen Hosts (mehrfach sampeln gegen Paketverlust)
         if (!string.IsNullOrWhiteSpace(cfg.ReachableHost) && cfg.ReachablePort > 0)
         {
-            available++;
-            if (await IsReachableAsync(cfg.ReachableHost, cfg.ReachablePort, TimeSpan.FromMilliseconds(800), ct))
-            {
-                score++;
-                reasons.Add($"{cfg.ReachableHost}:{cfg.ReachablePort} ✓");
-            }
-            else
-            {
-                reasons.Add($"{cfg.ReachableHost}:{cfg.ReachablePort} ✗");
-            }
+            configured++;
+            var reachable = await IsReachableAsync(cfg.ReachableHost, cfg.ReachablePort,
+                                                   TimeSpan.FromMilliseconds(800), retries, ct);
+            Tally(reachable ? CheckResult.Yes : CheckResult.No,
+                  $"{cfg.ReachableHost}:{cfg.ReachablePort}");
         }
 
-        // Mindestens N Checks müssen "zuhause" sagen UND mindestens N Checks müssen überhaupt verfügbar sein.
-        // Damit wir nicht "zuhause" raten, wenn wir nichts wissen.
-        var atHome = available >= min && score >= min;
-        var reason = string.Join(", ", reasons);
-        if (available == 0) reason = "Keine Heimerkennungs-Checks konfiguriert";
+        if (configured == 0)
+            return new DetectionResult(false, true, "Keine Heimerkennungs-Checks konfiguriert", 0, 0);
 
-        return new DetectionResult(atHome, reason, score, available);
+        // Mindestanzahl auf die tatsächlich konfigurierten Checks deckeln, damit ein
+        // Single-Check-Setup nicht dauerhaft "unterwegs" meldet.
+        var min = Math.Max(1, Math.Min(_state.Config.General.MinChecksRequired, configured));
+        var reason = string.Join(", ", reasons);
+
+        // Zu wenig belastbare (Yes/No) Antworten → wir wissen es schlicht nicht.
+        if (applicable < min)
+            return new DetectionResult(false, true,
+                $"{reason} (zu wenig belastbare Checks: {applicable}/{min})", yes, applicable);
+
+        var atHome = yes >= min;
+        return new DetectionResult(atHome, false, reason, yes, applicable);
     }
 
     private static string NormalizeMac(string mac) =>
         mac.Replace("-", ":").Replace(" ", "").ToUpperInvariant();
 
-    private string? GetDefaultGatewayMac()
+    private async Task<string?> GetDefaultGatewayMacAsync(int retries, CancellationToken ct)
+    {
+        var gateway = GetDefaultGatewayIp();
+        if (gateway == null) return null;
+
+        for (int attempt = 0; attempt <= retries; attempt++)
+        {
+            // Erst die ARP-Tabelle anstoßen: nach einem Netzwerkwechsel ist der
+            // Eintrag oft noch leer, ein Ping zwingt die Auflösung.
+            await PopulateArpAsync(gateway, ct);
+            var mac = ReadArpMac(gateway);
+            if (mac != null) return mac;
+            try { await Task.Delay(300, ct); }
+            catch (OperationCanceledException) { return null; }
+        }
+        return null;
+    }
+
+    private static IPAddress? GetDefaultGatewayIp()
+    {
+        foreach (var ni in NetworkInterface.GetAllNetworkInterfaces())
+        {
+            if (ni.OperationalStatus != OperationalStatus.Up) continue;
+            if (ni.NetworkInterfaceType == NetworkInterfaceType.Loopback) continue;
+            var gw = ni.GetIPProperties().GatewayAddresses
+                .FirstOrDefault(g => g.Address.AddressFamily == AddressFamily.InterNetwork
+                                     && !g.Address.Equals(IPAddress.Any));
+            if (gw != null) return gw.Address;
+        }
+        return null;
+    }
+
+    private async Task PopulateArpAsync(IPAddress gateway, CancellationToken ct)
     {
         try
         {
-            // Default Gateway IP über aktive Interfaces ermitteln
-            IPAddress? gateway = null;
-            foreach (var ni in NetworkInterface.GetAllNetworkInterfaces())
-            {
-                if (ni.OperationalStatus != OperationalStatus.Up) continue;
-                if (ni.NetworkInterfaceType == NetworkInterfaceType.Loopback) continue;
-                var gw = ni.GetIPProperties().GatewayAddresses
-                    .FirstOrDefault(g => g.Address.AddressFamily == AddressFamily.InterNetwork
-                                         && !g.Address.Equals(IPAddress.Any));
-                if (gw != null) { gateway = gw.Address; break; }
-            }
-            if (gateway == null) return null;
+            using var ping = new Ping();
+            await ping.SendPingAsync(gateway, 500).WaitAsync(ct);
+        }
+        catch (Exception ex)
+        {
+            _log.LogDebug(ex, "Gateway-Ping zum Füllen der ARP-Tabelle fehlgeschlagen");
+        }
+    }
 
-            // ARP-Tabelle abfragen via "arp -a"
+    private string? ReadArpMac(IPAddress gateway)
+    {
+        try
+        {
             var psi = new ProcessStartInfo("arp", $"-a {gateway}")
             {
                 RedirectStandardOutput = true,
@@ -126,7 +172,8 @@ public class NetworkDetector
         }
     }
 
-    private string? GetCurrentSsid()
+    // Liefert (ssid, hasWifi): hasWifi=false heißt "kein WLAN-Adapter aktiv" → Unknown.
+    private (string? Ssid, bool HasWifi) GetCurrentSsid()
     {
         try
         {
@@ -138,30 +185,51 @@ public class NetworkDetector
                 StandardOutputEncoding = System.Text.Encoding.UTF8
             };
             using var p = Process.Start(psi);
-            if (p == null) return null;
+            if (p == null) return (null, false);
             var output = p.StandardOutput.ReadToEnd();
             p.WaitForExit(2000);
 
-            // SSID erscheint als "SSID                   : MeinWLAN" (sprachabhängig auch "SSID   :")
-            // BSSID ausschließen, das ist die MAC vom AP
+            // Kein WLAN-Interface vorhanden / verbunden → kein "State"/keine Daten.
+            bool hasWifi = false;
+            string? ssid = null;
             foreach (var line in output.Split('\n'))
             {
                 var trimmed = line.TrimStart();
+                if (trimmed.StartsWith("State", StringComparison.OrdinalIgnoreCase))
+                    hasWifi = true;
                 if (trimmed.StartsWith("BSSID", StringComparison.OrdinalIgnoreCase)) continue;
                 if (!trimmed.StartsWith("SSID", StringComparison.OrdinalIgnoreCase)) continue;
                 var idx = trimmed.IndexOf(':');
                 if (idx < 0) continue;
-                return trimmed[(idx + 1)..].Trim();
+                ssid = trimmed[(idx + 1)..].Trim();
+                hasWifi = true;
             }
+            // SSID leer obwohl Adapter da → nicht verbunden, das ist ein echtes "nein".
+            return (ssid, hasWifi);
         }
         catch (Exception ex)
         {
             _log.LogWarning(ex, "SSID konnte nicht ermittelt werden");
+            return (null, false);
         }
-        return null;
     }
 
-    private async Task<bool> IsReachableAsync(string host, int port, TimeSpan timeout, CancellationToken ct)
+    private async Task<bool> IsReachableAsync(string host, int port, TimeSpan timeout,
+                                              int retries, CancellationToken ct)
+    {
+        for (int attempt = 0; attempt <= retries; attempt++)
+        {
+            if (await TryConnectAsync(host, port, timeout, ct)) return true;
+            if (attempt < retries)
+            {
+                try { await Task.Delay(200, ct); }
+                catch (OperationCanceledException) { return false; }
+            }
+        }
+        return false;
+    }
+
+    private static async Task<bool> TryConnectAsync(string host, int port, TimeSpan timeout, CancellationToken ct)
     {
         try
         {
