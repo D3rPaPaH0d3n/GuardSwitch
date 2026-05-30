@@ -40,6 +40,7 @@ ArchitecturesInstallIn64BitMode=x64compatible
 MinVersion=10.0.17763
 UninstallDisplayName={#MyAppName}
 UninstallDisplayIcon={app}\{#MyTrayExe}
+SetupIconFile=..\src\WgAutoswitch.Tray\app.ico
 SetupLogging=yes
 CloseApplications=force
 

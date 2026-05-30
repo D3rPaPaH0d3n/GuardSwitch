@@ -8,6 +8,7 @@
     <LangVersion>latest</LangVersion>
     <RootNamespace>WgAutoswitch.Tray</RootNamespace>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>app.ico</ApplicationIcon>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\WgAutoswitch.Shared\WgAutoswitch.Shared.csproj" />
