@@ -20,7 +20,36 @@ public class AppConfig
 
         var toml = File.ReadAllText(path);
         var model = Toml.ToModel(toml);
-        return FromModel(model);
+        var cfg = FromModel(model);
+
+        // Sanfte Migration: stammt die Datei aus einer Version vor den neuen
+        // Schlüsseln, einmalig auf das aktuelle Schema normalisieren und neu
+        // schreiben. Bestehende Werte (Tunnel, Heim-Indikatoren, alte Hysterese)
+        // bleiben erhalten; fehlende Felder bekommen Defaults.
+        if (NeedsMigration(model))
+        {
+            cfg.NormalizeAfterMigration();
+            try { cfg.Save(path); } catch { /* nicht fatal: Defaults greifen zur Laufzeit */ }
+        }
+        return cfg;
+    }
+
+    private static bool NeedsMigration(TomlTable model)
+        => model.TryGetValue("general", out var gen) && gen is TomlTable gt
+           && !gt.TryGetValue("hysteresis_count_home", out _);
+
+    private void NormalizeAfterMigration()
+    {
+        // min_checks_required auf die Anzahl tatsächlich konfigurierter Heim-
+        // Indikatoren deckeln (mind. 1). Alte Installer setzten den Wert auf
+        // "alle Checks müssen zustimmen" – mit der neuen Tri-State-Logik kann das
+        // sonst dauerhaft "unklar" liefern, wenn ein Check nicht anwendbar ist.
+        int configured = 0;
+        if (!string.IsNullOrWhiteSpace(HomeDetection.GatewayMac)) configured++;
+        if (!string.IsNullOrWhiteSpace(HomeDetection.Ssid)) configured++;
+        if (!string.IsNullOrWhiteSpace(HomeDetection.ReachableHost) && HomeDetection.ReachablePort > 0) configured++;
+        if (configured < 1) configured = 1;
+        General.MinChecksRequired = Math.Clamp(General.MinChecksRequired, 1, configured);
     }
 
     public void Save(string path)
