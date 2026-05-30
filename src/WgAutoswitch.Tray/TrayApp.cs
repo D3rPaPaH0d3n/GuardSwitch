@@ -12,7 +12,7 @@ namespace WgAutoswitch.Tray;
 public class TrayApp : ApplicationContext
 {
     // Sichtbarer App-Name (Tooltip/Benachrichtigungen). Der technische Bezeichner
-    // für Dienst/Pipe/Config-Ordner bleibt weiterhin "wg-autoswitch".
+    // technischer Bezeichner für Dienst/Pipe/Config-Ordner ist "guardswitch".
     private const string AppName = "GuardSwitch";
 
     // Spenden-Link (Revolut Pocket von @D3rPaPaH0d3n).

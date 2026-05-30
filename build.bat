@@ -1,6 +1,6 @@
 @echo off
 REM ========================================================
-REM Build-Skript fuer wg-autoswitch
+REM Build-Skript fuer GuardSwitch
 REM
 REM Voraussetzungen:
 REM   - .NET 8 SDK installiert (https://dot.net)
@@ -49,14 +49,14 @@ if "%ISCC%"=="" (
     goto :error
 )
 
-"%ISCC%" installer\wg-autoswitch.iss
+"%ISCC%" installer\guardswitch.iss
 if errorlevel 1 goto :error
 
 echo.
 echo === [3/3] Fertig ===
 echo.
 echo Der Installer liegt unter:
-echo   installer\output\wg-autoswitch-setup-1.0.0.exe
+echo   installer\output\guardswitch-setup-1.0.0.exe
 echo.
 goto :end
 

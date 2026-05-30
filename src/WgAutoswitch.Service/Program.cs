@@ -6,7 +6,7 @@ using WgAutoswitch.Shared;
 
 var builder = Host.CreateApplicationBuilder(args);
 
-builder.Services.AddWindowsService(o => o.ServiceName = "wg-autoswitch");
+builder.Services.AddWindowsService(o => o.ServiceName = "guardswitch");
 
 // Geteilter State zwischen Worker und Pipe-Server
 builder.Services.AddSingleton<ServiceState>();
@@ -19,7 +19,7 @@ builder.Services.AddSingleton(sp => AppConfig.Load(Paths.ConfigFile));
 // Logging: Windows Event Log + File-Log unter ProgramData
 builder.Logging.AddEventLog(settings =>
 {
-    settings.SourceName = "wg-autoswitch";
+    settings.SourceName = "guardswitch";
 });
 builder.Logging.AddProvider(new FileLoggerProvider(Paths.LogFile));
 

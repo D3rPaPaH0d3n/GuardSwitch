@@ -18,7 +18,7 @@ nur einen GitHub-Account.
 
 1. Auf https://github.com einloggen
 2. Oben rechts auf **+** → **New repository**
-3. Name: z.B. `wg-autoswitch`
+3. Name: z.B. `guardswitch`
 4. Private oder Public - egal, für deine Zwecke reicht Private
 5. **NICHT** "Initialize with README" anhaken (du hast schon Dateien)
 6. **Create repository** klicken
@@ -32,7 +32,7 @@ git init
 git add .
 git commit -m "Initial commit"
 git branch -M main
-git remote add origin https://github.com/DEIN-USERNAME/wg-autoswitch.git
+git remote add origin https://github.com/DEIN-USERNAME/guardswitch.git
 git push -u origin main
 ```
 
@@ -57,12 +57,12 @@ Das wars an Setup. Ab jetzt baut GitHub bei jedem Push automatisch.
 ### Variante A: Manueller Build (jederzeit)
 
 1. Im Repo auf **Actions** klicken
-2. Links **"Build wg-autoswitch"** anklicken
+2. Links **"Build GuardSwitch"** anklicken
 3. Rechts **"Run workflow"** Button → **"Run workflow"** bestätigen
 4. Warten (~3-5 Minuten)
 5. Auf den fertigen Run klicken
-6. Ganz unten unter **"Artifacts"** liegt `wg-autoswitch-installer` zum Download
-7. ZIP herunterladen, entpacken → `wg-autoswitch-setup-1.0.0.exe` ist drin
+6. Ganz unten unter **"Artifacts"** liegt `guardswitch-installer` zum Download
+7. ZIP herunterladen, entpacken → `guardswitch-setup-1.0.0.exe` ist drin
 
 ### Variante B: Automatischer Build mit Release (bei neuen Versionen)
 

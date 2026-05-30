@@ -36,7 +36,7 @@ public class MainWorker : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        _log.LogInformation("wg-autoswitch gestartet");
+        _log.LogInformation("GuardSwitch gestartet");
 
         // Sofort reagieren bei Netzwerk-Änderungen (kein dummes Polling auf alles)
         NetworkChange.NetworkAvailabilityChanged += (s, e) => TriggerImmediate();

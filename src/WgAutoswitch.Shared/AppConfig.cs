@@ -56,7 +56,7 @@ public class AppConfig
     {
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
         var sb = new System.Text.StringBuilder();
-        sb.AppendLine("# wg-autoswitch configuration");
+        sb.AppendLine("# GuardSwitch configuration");
         sb.AppendLine("# Edit this file then restart the service.");
         sb.AppendLine();
         sb.AppendLine("[general]");
@@ -192,8 +192,8 @@ public class HomeDetectionConfig
 public static class Paths
 {
     public static string ConfigDir =>
-        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "wg-autoswitch");
+        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "guardswitch");
     public static string ConfigFile => Path.Combine(ConfigDir, "config.toml");
     public static string LogFile => Path.Combine(ConfigDir, "log.txt");
-    public const string PipeName = "wg-autoswitch";
+    public const string PipeName = "guardswitch";
 }

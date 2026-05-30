@@ -6,11 +6,11 @@
 
 **Zuhause aus. Unterwegs an. Vollautomatisch.**
 
-[![Download](https://img.shields.io/badge/⬇_Download-0078D4?style=for-the-badge)](https://github.com/D3rPaPaH0d3n/wg-autoswitch/releases/latest)
+[![Download](https://img.shields.io/badge/⬇_Download-0078D4?style=for-the-badge)](https://github.com/D3rPaPaH0d3n/guardswitch/releases/latest)
 [![Plattform](https://img.shields.io/badge/Windows_10/11-0078D4?style=for-the-badge&logo=windows&logoColor=white)](#)
 [![Spenden](https://img.shields.io/badge/💚_Spenden-FF5F5F?style=for-the-badge)](https://revolut.me/mkainer/pocket/QAt1Q0Ntsb)
 
-<sub>Technischer Bezeichner / Repo-Name: `wg-autoswitch` — Dienst, Pipe und Config-Ordner heißen weiterhin so.</sub>
+<sub>Dienst, Pipe und Config-Ordner heißen technisch `guardswitch`. Die internen .NET-Module heißen weiterhin `WgAutoswitch.*`.</sub>
 
 </div>
 
@@ -58,9 +58,9 @@ Den Status siehst du jederzeit am Tray-Icon. Fertig.
 
 ## Download
 
-Aktuelle Version → [**Releases**](https://github.com/D3rPaPaH0d3n/wg-autoswitch/releases/latest)
+Aktuelle Version → [**Releases**](https://github.com/D3rPaPaH0d3n/guardswitch/releases/latest)
 
-`wg-autoswitch-setup-X.Y.Z.exe` herunterladen und ausführen. Dabei:
+`guardswitch-setup-X.Y.Z.exe` herunterladen und ausführen. Dabei:
 
 > ⚠️ Windows zeigt "Unbekannter Herausgeber" / SmartScreen-Warnung, weil der
 > Installer nicht code-signed ist (Zertifikate kosten Geld, die App ist
@@ -73,7 +73,7 @@ bereits installiert und mindestens ein Tunnel ist eingerichtet.
 
 Einfach den neuen Installer drüberlaufen lassen — kein Deinstallieren nötig.
 Service wird automatisch gestoppt, getauscht und wieder gestartet, deine
-Konfiguration unter `C:\ProgramData\wg-autoswitch\config.toml` bleibt erhalten.
+Konfiguration unter `C:\ProgramData\guardswitch\config.toml` bleibt erhalten.
 Konfig anpassen geht jederzeit über das Tray-Menü → "Konfiguration öffnen".
 
 ## Aufbau
@@ -100,7 +100,7 @@ Dann einfach:
 .\build.bat
 ```
 
-Ergebnis: `installer\output\wg-autoswitch-setup-1.0.0.exe`
+Ergebnis: `installer\output\guardswitch-setup-1.0.0.exe`
 
 Das ist die Datei, die du an Endnutzer weitergibst.
 
@@ -119,7 +119,7 @@ dotnet publish src\WgAutoswitch.Tray -c Release -r win-x64 --self-contained -p:P
 
 ## Installation
 
-**Für Endnutzer:** Den Installer `wg-autoswitch-setup-1.0.0.exe` ausführen
+**Für Endnutzer:** Den Installer `guardswitch-setup-1.0.0.exe` ausführen
 und der Anleitung im [QUICKGUIDE.md](QUICKGUIDE.md) folgen.
 
 **Manuell (für Entwicklung):**
@@ -132,11 +132,11 @@ importiert sein, der Service `WireGuardTunnel$<name>` muss existieren.
 Als Admin in PowerShell:
 
 ```powershell
-sc create wg-autoswitch binPath= "C:\Tools\wg-autoswitch\WgAutoswitch.Service.exe" `
+sc create guardswitch binPath= "C:\Tools\guardswitch\WgAutoswitch.Service.exe" `
     DisplayName= "GuardSwitch" `
     start= auto
-sc description wg-autoswitch "Aktiviert/deaktiviert WireGuard-Tunnel je nach Netzwerk."
-sc start wg-autoswitch
+sc description guardswitch "Aktiviert/deaktiviert WireGuard-Tunnel je nach Netzwerk."
+sc start guardswitch
 ```
 
 ### Tray automatisch starten
@@ -148,7 +148,7 @@ Verknüpfung von `WgAutoswitch.Tray.exe` in den Autostart legen:
 
 ## Konfiguration
 
-Beim ersten Start des Service wird `C:\ProgramData\wg-autoswitch\config.toml`
+Beim ersten Start des Service wird `C:\ProgramData\guardswitch\config.toml`
 mit Default-Werten erzeugt. Anpassen:
 
 ```toml
@@ -182,17 +182,17 @@ Nach Änderungen entweder Service neustarten oder im Tray
 | Ebene | Was passiert | Wie |
 |---|---|---|
 | 1 | Auto-Modus pausieren | Tray-Rechtsklick → "Auto-Modus pausieren" |
-| 2 | Service stoppen | `sc stop wg-autoswitch` |
-| 3 | Service deaktivieren | `sc config wg-autoswitch start= disabled` |
-| 4 | Komplett weg | `sc delete wg-autoswitch` |
+| 2 | Service stoppen | `sc stop guardswitch` |
+| 3 | Service deaktivieren | `sc config guardswitch start= disabled` |
+| 4 | Komplett weg | `sc delete guardswitch` |
 
 WireGuard selbst wird nie verändert. Wenn der Service weg ist, bleibt
 alles wie zuletzt - kein "Panik-Aus".
 
 ## Logs
 
-- Windows Event Log: Anwendung, Quelle "wg-autoswitch"
-- `C:\ProgramData\wg-autoswitch\log.txt` (Service schreibt mit, bei 1 MB
+- Windows Event Log: Anwendung, Quelle "guardswitch"
+- `C:\ProgramData\guardswitch\log.txt` (Service schreibt mit, bei 1 MB
   Rotation nach `log.txt.old`)
 
 ## Tray-Icon

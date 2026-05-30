@@ -1,4 +1,4 @@
-name: Build wg-autoswitch
+name: Build GuardSwitch
 
 on:
   # Manuell: leer lassen = nur Build-Test (Artifact, kein Release).
@@ -87,12 +87,12 @@ jobs:
         run: |
           & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" `
             /DMyAppVersion=${{ steps.version.outputs.version }} `
-            installer\wg-autoswitch.iss
+            installer\guardswitch.iss
 
       - name: Upload Installer Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: wg-autoswitch-installer-${{ steps.version.outputs.version }}
+          name: guardswitch-installer-${{ steps.version.outputs.version }}
           path: installer\output\*.exe
           if-no-files-found: error
 
@@ -117,7 +117,7 @@ jobs:
           files: installer/output/*.exe
           generate_release_notes: true
           body: |
-            **Installer:** `wg-autoswitch-setup-${{ steps.version.outputs.version }}.exe`
+            **Installer:** `guardswitch-setup-${{ steps.version.outputs.version }}.exe`
 
             Voraussetzung: [WireGuard für Windows](https://www.wireguard.com/install/)
             mit mindestens einem eingerichteten Tunnel.

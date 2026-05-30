@@ -55,13 +55,13 @@ Wenn du sowas nicht hast: einfach leer lassen, MAC + WLAN reichen auch.
 
 ## Installation
 
-1. **`wg-autoswitch-setup-1.0.0.exe`** doppelklicken
+1. **`guardswitch-setup-1.0.0.exe`** doppelklicken
 2. Falls Windows-Schutz fragt: **"Weitere Informationen"** → **"Trotzdem ausführen"**
 3. Bei "Möchten Sie Änderungen zulassen?" auf **Ja** klicken
 4. Im Wizard durchklicken:
    - Sprache wählen
    - Voraussetzungen-Hinweis lesen
-   - Installationsort: einfach belassen (`C:\Program Files\wg-autoswitch`)
+   - Installationsort: einfach belassen (`C:\Program Files\guardswitch`)
    - Häkchen bei **"Tray-Symbol bei Windows-Anmeldung automatisch starten"** lassen
 5. **Konfigurationsseite ausfüllen:**
    - **Tunnelname:** genau wie in WireGuard, z.B. `home`
@@ -187,10 +187,10 @@ WireGuard selbst bleibt installiert und unverändert.
 
 | Was | Wo |
 |-----|-----|
-| Programm-Dateien | `C:\Program Files\wg-autoswitch\` |
-| Konfiguration | `C:\ProgramData\wg-autoswitch\config.toml` |
-| Log-Datei | `C:\ProgramData\wg-autoswitch\log.txt` |
-| Detail-Logs | Ereignisanzeige → Anwendung → Quelle "wg-autoswitch" |
+| Programm-Dateien | `C:\Program Files\guardswitch\` |
+| Konfiguration | `C:\ProgramData\guardswitch\config.toml` |
+| Log-Datei | `C:\ProgramData\guardswitch\log.txt` |
+| Detail-Logs | Ereignisanzeige → Anwendung → Quelle "guardswitch" |
 
 > **Tipp:** Den `ProgramData`-Ordner siehst du im Explorer normalerweise nicht.
 > Du kannst die Pfade aber direkt in die Adresszeile eintippen, oder einfach

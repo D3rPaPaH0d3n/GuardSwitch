@@ -1,20 +1,24 @@
 ; ===========================================================
-; wg-autoswitch Installer
+; GuardSwitch Installer
 ; Inno Setup Skript - benötigt Inno Setup 6.2 oder neuer
 ; https://jrsoftware.org/isdl.php
 ; ===========================================================
 
 #define MyAppName "GuardSwitch"
-#define MyAppShortName "wg-autoswitch"
+#define MyAppShortName "guardswitch"
+; Alter technischer Bezeichner vor der Umbenennung - nur noch für die Migration
+; (alten Dienst entfernen, alte Konfiguration übernehmen) gebraucht.
+#define MyOldShortName "wg-autoswitch"
+#define MyOldServiceName "wg-autoswitch"
 ; MyAppVersion kann via Kommandozeile überschrieben werden:
-;   ISCC.exe /DMyAppVersion=1.2.3 wg-autoswitch.iss
+;   ISCC.exe /DMyAppVersion=1.2.3 guardswitch.iss
 ; Wird im CI-Workflow aus dem Git-Tag (v1.2.3) abgeleitet.
 #ifndef MyAppVersion
   #define MyAppVersion "0.0.0-dev"
 #endif
 #define MyAppPublisher "Markus Kainer (@D3rPaPaH0d3n)"
-#define MyAppURL "https://github.com/D3rPaPaH0d3n/wg-autoswitch"
-#define MyServiceName "wg-autoswitch"
+#define MyAppURL "https://github.com/D3rPaPaH0d3n/guardswitch"
+#define MyServiceName "guardswitch"
 #define MyServiceExe "WgAutoswitch.Service.exe"
 #define MyTrayExe "WgAutoswitch.Tray.exe"
 
@@ -29,7 +33,7 @@ DefaultDirName={autopf}\{#MyAppShortName}
 DefaultGroupName={#MyAppName}
 DisableProgramGroupPage=yes
 OutputDir=output
-OutputBaseFilename=wg-autoswitch-setup-{#MyAppVersion}
+OutputBaseFilename=guardswitch-setup-{#MyAppVersion}
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
@@ -65,12 +69,12 @@ Source: "..\QUICKGUIDE.md"; DestDir: "{app}"; Flags: ignoreversion
 
 [Dirs]
 ; Programmdaten-Verzeichnis mit passenden Rechten anlegen
-Name: "{commonappdata}\wg-autoswitch"; Permissions: users-modify
+Name: "{commonappdata}\{#MyAppShortName}"; Permissions: users-modify
 
 [Icons]
 Name: "{group}\{#MyAppName} - Tray starten"; Filename: "{app}\tray\{#MyTrayExe}"
-Name: "{group}\Konfiguration bearbeiten"; Filename: "notepad.exe"; Parameters: """{commonappdata}\wg-autoswitch\config.toml"""
-Name: "{group}\Log öffnen"; Filename: "notepad.exe"; Parameters: """{commonappdata}\wg-autoswitch\log.txt"""
+Name: "{group}\Konfiguration bearbeiten"; Filename: "notepad.exe"; Parameters: """{commonappdata}\{#MyAppShortName}\config.toml"""
+Name: "{group}\Log öffnen"; Filename: "notepad.exe"; Parameters: """{commonappdata}\{#MyAppShortName}\log.txt"""
 Name: "{group}\Quickguide"; Filename: "{app}\QUICKGUIDE.md"
 Name: "{group}\{cm:UninstallProgram,{#MyAppName}}"; Filename: "{uninstallexe}"
 
@@ -105,7 +109,7 @@ Filename: "{sys}\sc.exe"; Parameters: "delete {#MyServiceName}"; Flags: runhidde
 
 [UninstallDelete]
 ; Logs im ProgramData-Ordner aufräumen, Config behalten falls gewünscht
-Type: files; Name: "{commonappdata}\wg-autoswitch\log.txt"
+Type: files; Name: "{commonappdata}\{#MyAppShortName}\log.txt"
 
 [Code]
 // =====================================================================
@@ -170,7 +174,11 @@ end;
 // also den User nicht damit verwirren.
 function IsUpgrade(): Boolean;
 begin
-  Result := FileExists(ExpandConstant('{commonappdata}\wg-autoswitch\config.toml'));
+  // Update erkannt, wenn eine Config am neuen ODER am alten (vor-Umbenennung)
+  // Ort liegt. So werden die Wizard-Seiten auch beim Wechsel von der alten
+  // wg-autoswitch-Version übersprungen.
+  Result := FileExists(ExpandConstant('{commonappdata}\{#MyAppShortName}\config.toml'))
+         or FileExists(ExpandConstant('{commonappdata}\{#MyOldShortName}\config.toml'));
 end;
 
 function ShouldSkipPage(PageID: Integer): Boolean;
@@ -235,13 +243,13 @@ begin
   ReachableHost := Trim(ConfigPage.Values[3]);
   ReachablePort := Trim(ConfigPage.Values[4]);
 
-  ConfigPath := ExpandConstant('{commonappdata}\wg-autoswitch\config.toml');
+  ConfigPath := ExpandConstant('{commonappdata}\{#MyAppShortName}\config.toml');
 
   // Nur überschreiben, wenn noch keine Config da ist (Update-Schutz)
   if FileExists(ConfigPath) then
     Exit;
 
-  ForceDirectories(ExpandConstant('{commonappdata}\wg-autoswitch'));
+  ForceDirectories(ExpandConstant('{commonappdata}\{#MyAppShortName}'));
 
   // min_checks_required = Anzahl der ausgefüllten Heim-Indikatoren.
   // Damit "alle ausgefüllten Checks müssen zustimmen" ohne dass der User
@@ -253,7 +261,7 @@ begin
   if CheckCount = 0      then CheckCount := 1;
 
   ConfigContent :=
-    '# wg-autoswitch Konfiguration' + #13#10 +
+    '# GuardSwitch Konfiguration' + #13#10 +
     '# Bei Aenderungen: Tray-Rechtsklick -> "Konfiguration neu laden"' + #13#10 +
     '' + #13#10 +
     '[general]' + #13#10 +
@@ -290,6 +298,21 @@ end;
 // versucht, die laufenden .exe-Dateien zu überschreiben. Sonst greift
 // der Restart-Manager und der Installer bricht mit "Anwendungen konnten
 // nicht geschlossen werden" ab.
+// Einen Windows-Dienst zuverlässig stoppen und entfernen.
+procedure StopAndDeleteService(ServiceName: string);
+var
+  ResultCode: Integer;
+begin
+  Exec(ExpandConstant('{sys}\sc.exe'), 'stop ' + ServiceName,
+       '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+  // sc stop kehrt zurück, sobald der SCM den Stop-Befehl angenommen hat -
+  // der Prozess kann noch ein paar Sekunden brauchen bis er wirklich weg ist
+  Sleep(2500);
+  Exec(ExpandConstant('{sys}\sc.exe'), 'delete ' + ServiceName,
+       '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+  Sleep(1000);
+end;
+
 procedure StopExistingInstall();
 var
   ResultCode: Integer;
@@ -299,17 +322,34 @@ begin
        '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
   Sleep(500);
 
-  // Service stoppen (hält WgAutoswitch.Service.exe offen)
-  Exec(ExpandConstant('{sys}\sc.exe'), 'stop ' + '{#MyServiceName}',
-       '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
-  // sc stop kehrt zurück, sobald der SCM den Stop-Befehl angenommen hat -
-  // der Prozess kann noch ein paar Sekunden brauchen bis er wirklich weg ist
-  Sleep(2500);
+  // Sowohl den neuen als auch den alten (vor-Umbenennung) Dienst stoppen/entfernen.
+  // Der alte "wg-autoswitch"-Dienst muss weg, sonst bleibt nach dem Update ein
+  // verwaister Geister-Dienst zurück, der dieselben Tunnel schaltet.
+  StopAndDeleteService('{#MyServiceName}');
+  StopAndDeleteService('{#MyOldServiceName}');
+end;
 
-  // Service-Eintrag entfernen, damit binPath frei wird
-  Exec(ExpandConstant('{sys}\sc.exe'), 'delete ' + '{#MyServiceName}',
-       '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
-  Sleep(1000);
+// Konfiguration (und Log) einmalig aus dem alten ProgramData-Ordner übernehmen,
+// damit der Nutzer beim Wechsel von wg-autoswitch zu GuardSwitch seine
+// Einstellungen nicht verliert.
+procedure MigrateOldData();
+var
+  OldDir, NewDir: string;
+begin
+  OldDir := ExpandConstant('{commonappdata}\{#MyOldShortName}');
+  NewDir := ExpandConstant('{commonappdata}\{#MyAppShortName}');
+
+  // Nur migrieren, wenn der neue Ordner noch keine Config hat (kein Überschreiben).
+  if FileExists(NewDir + '\config.toml') then
+    Exit;
+
+  if FileExists(OldDir + '\config.toml') then
+  begin
+    ForceDirectories(NewDir);
+    FileCopy(OldDir + '\config.toml', NewDir + '\config.toml', False);
+    if FileExists(OldDir + '\log.txt') then
+      FileCopy(OldDir + '\log.txt', NewDir + '\log.txt', False);
+  end;
 end;
 
 procedure CurStepChanged(CurStep: TSetupStep);
@@ -317,8 +357,10 @@ begin
   if CurStep = ssInstall then
   begin
     // Reihenfolge ist wichtig: erst altes Setup runterfahren (sonst sind die
-    // .exe-Dateien gesperrt), dann ggf. Default-Config rausschreiben.
+    // .exe-Dateien gesperrt), dann Altdaten übernehmen, dann ggf. Default-Config
+    // rausschreiben (das erkennt die migrierte Config und lässt sie in Ruhe).
     StopExistingInstall();
+    MigrateOldData();
     WriteInitialConfig();
   end;
 end;
@@ -342,9 +384,9 @@ begin
     KeepConfig := MsgBox('Konfigurationsdatei behalten?' + #13#10 + #13#10 +
                          'Bei "Ja" bleibt deine Konfiguration für eine spätere ' +
                          'Neuinstallation erhalten.' + #13#10 +
-                         'Bei "Nein" werden alle Daten von wg-autoswitch entfernt.',
+                         'Bei "Nein" werden alle Daten von GuardSwitch entfernt.',
                          mbConfirmation, MB_YESNO);
     if KeepConfig = IDNO then
-      DelTree(ExpandConstant('{commonappdata}\wg-autoswitch'), True, True, True);
+      DelTree(ExpandConstant('{commonappdata}\{#MyAppShortName}'), True, True, True);
   end;
 end;
