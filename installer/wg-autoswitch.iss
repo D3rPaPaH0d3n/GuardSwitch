@@ -78,9 +78,9 @@ Name: "{group}\{cm:UninstallProgram,{#MyAppName}}"; Filename: "{uninstallexe}"
 Name: "{userstartup}\{#MyAppName} Tray"; Filename: "{app}\tray\{#MyTrayExe}"; Tasks: autostart
 
 [InstallDelete]
-; Alte Autostart-Verknüpfung aus früheren Versionen entfernen (vor Umbenennung in GuardSwitch)
+; Alte Autostart-Verknüpfung aus früheren Versionen entfernen (vor Umbenennung in GuardSwitch).
+; Sonst starten alte UND neue Verknüpfung dieselbe Tray-EXE → doppeltes Icon.
 Type: files; Name: "{userstartup}\WireGuard Auto-Switch Tray.lnk"
-Type: files; Name: "{userstartup}\wg-autoswitch Tray.lnk"
 
 [Run]
 ; Neuen Service registrieren (Stop+Delete eines existierenden Vorgängers
