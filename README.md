@@ -1,4 +1,8 @@
-# wg-autoswitch
+# GuardSwitch
+
+<sub>(technischer Bezeichner / Repo-Name: `wg-autoswitch` — Dienst, Pipe und Config-Ordner heißen weiterhin so)</sub>
+
+[![Spenden](https://img.shields.io/badge/💚_Spenden-FF5F5F?style=for-the-badge)](https://revolut.me/mkainer/pocket/QAt1Q0Ntsb)
 
 Automatisches Aktivieren/Deaktivieren eines WireGuard-Tunnels unter Windows
 basierend auf der Erkennung des Heimnetzwerks. Mit Tray-Icon zur Statusanzeige
@@ -86,7 +90,7 @@ Als Admin in PowerShell:
 
 ```powershell
 sc create wg-autoswitch binPath= "C:\Tools\wg-autoswitch\WgAutoswitch.Service.exe" `
-    DisplayName= "WireGuard Auto-Switch" `
+    DisplayName= "GuardSwitch" `
     start= auto
 sc description wg-autoswitch "Aktiviert/deaktiviert WireGuard-Tunnel je nach Netzwerk."
 sc start wg-autoswitch
@@ -142,15 +146,26 @@ alles wie zuletzt - kein "Panik-Aus".
 - `C:\ProgramData\wg-autoswitch\log.txt` (Service schreibt mit, bei 1 MB
   Rotation nach `log.txt.old`)
 
-## Tray-Icon-Farben
+## Tray-Icon
 
-- 🟢 Grün - zuhause erkannt, Tunnel aus
-- 🔵 Blau - unterwegs erkannt, Tunnel an
-- ⚪ Grau - Auto-Modus pausiert
-- 🔴 Rot - Service nicht erreichbar oder Fehler
+Schild-Symbol im Fluent-Stil, passt sich an helle/dunkle Taskleiste an. Der
+Zustand ist an Farbe **und** Innensymbol erkennbar:
+
+- 🛡 Grün + Häkchen - zuhause erkannt, Tunnel aus
+- 🛡 Blau + Schloss - unterwegs erkannt, Tunnel an
+- 🛡 Grau + Pause - Auto-Modus pausiert
+- 🛡 Rot + Ausrufezeichen - Service nicht erreichbar oder Fehler
+- 🛡 Grau + Fragezeichen - Zustand noch unbekannt
 
 ## TODO / Erweiterungen
 
 - Optional: Settings-Dialog statt nur Notepad
 - Optional: Heim-Erkennung über Cloudflare-Tunnel-Status
 - Optional: per-Tunnel-Konfiguration (verschiedene Tunnel für verschiedene Netze)
+
+## Unterstützen
+
+GuardSwitch ist kostenlos und Open Source. Wenn dir das Projekt hilft, freue ich
+mich über eine kleine Spende:
+
+[![Spenden](https://img.shields.io/badge/💚_Spenden-FF5F5F?style=for-the-badge)](https://revolut.me/mkainer/pocket/QAt1Q0Ntsb)

@@ -4,7 +4,7 @@
 ; https://jrsoftware.org/isdl.php
 ; ===========================================================
 
-#define MyAppName "WireGuard Auto-Switch"
+#define MyAppName "GuardSwitch"
 #define MyAppShortName "wg-autoswitch"
 ; MyAppVersion kann via Kommandozeile überschrieben werden:
 ;   ISCC.exe /DMyAppVersion=1.2.3 wg-autoswitch.iss
@@ -40,6 +40,7 @@ ArchitecturesInstallIn64BitMode=x64compatible
 MinVersion=10.0.17763
 UninstallDisplayName={#MyAppName}
 UninstallDisplayIcon={app}\{#MyTrayExe}
+SetupIconFile=..\src\WgAutoswitch.Tray\app.ico
 SetupLogging=yes
 CloseApplications=force
 
@@ -115,7 +116,7 @@ begin
   // Hinweisseite: WireGuard muss vorab installiert sein
   WireGuardCheckPage := CreateOutputMsgMemoPage(wpWelcome,
     'Voraussetzungen', 'Bitte vorher prüfen',
-    'Damit dieser Auto-Switch funktioniert, muss Folgendes bereits eingerichtet sein:',
+    'Damit GuardSwitch funktioniert, muss Folgendes bereits eingerichtet sein:',
     'WICHTIG - bitte vor der Installation prüfen:' + #13#10 +
     '' + #13#10 +
     '1) WireGuard für Windows ist installiert.' + #13#10 +
@@ -144,7 +145,7 @@ begin
 
   // Konfigurationsseite mit Eingabefeldern
   ConfigPage := CreateInputQueryPage(wpSelectTasks,
-    'Konfiguration', 'Grunddaten für den Auto-Switch',
+    'Konfiguration', 'Grunddaten für GuardSwitch',
     'Tunnelname ist Pflicht. Für die Heim-Erkennung reicht ein Feld; mehrere ' +
     'erhöhen die Treffsicherheit. Anpassbar später unter Startmenü -> ' +
     'Konfiguration bearbeiten.');
@@ -253,8 +254,11 @@ begin
     '[general]' + #13#10 +
     'enabled = true' + #13#10 +
     'check_interval_seconds = 10' + #13#10 +
-    'hysteresis_count = 2' + #13#10 +
-    'min_checks_required = ' + IntToStr(CheckCount) + #13#10 +
+    'settle_delay_seconds = 3' + #13#10 +
+    'check_retries = 2' + #13#10 +
+    'hysteresis_count_home = 3' + #13#10 +
+    'hysteresis_count_away = 1' + #13#10 +
+    'min_checks_required = 1' + #13#10 +
     '' + #13#10 +
     '[[tunnels]]' + #13#10 +
     'name = "' + TunnelName + '"' + #13#10 +

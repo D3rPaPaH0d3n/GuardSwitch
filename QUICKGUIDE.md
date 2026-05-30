@@ -1,4 +1,4 @@
-# WireGuard Auto-Switch - Quickguide
+# GuardSwitch - Quickguide
 
 Dieses Programm schaltet deinen WireGuard-VPN-Tunnel **automatisch ein**,
 wenn du unterwegs bist, und **automatisch aus**, sobald du wieder zuhause
@@ -46,8 +46,8 @@ Das klingt technisch, ist aber in 30 Sekunden erledigt:
 ### 4. Optional: Eine IP, die nur zuhause erreichbar ist
 
 Wenn du sowas wie ein NAS, einen Raspberry Pi oder einen Heimserver hast:
-seine IP-Adresse aufschreiben (z.B. `192.168.178.5`). Damit kann der
-Auto-Switch *zusätzlich* prüfen, ob du wirklich zuhause bist.
+seine IP-Adresse aufschreiben (z.B. `192.168.178.5`). Damit kann
+GuardSwitch *zusätzlich* prüfen, ob du wirklich zuhause bist.
 
 Wenn du sowas nicht hast: einfach leer lassen, MAC + WLAN reichen auch.
 
@@ -114,11 +114,11 @@ siehst nur das Symbol nicht mehr.
 **Stufe 3 - Hintergrunddienst stoppen**
 - `Win + R` drücken
 - `services.msc` eingeben, Enter
-- "WireGuard Auto-Switch" suchen → Rechtsklick → Beenden
+- "GuardSwitch" suchen → Rechtsklick → Beenden
 - Für dauerhaft: zusätzlich Doppelklick → Starttyp auf "Deaktiviert"
 
 **Stufe 4 - Komplett deinstallieren**
-Windows-Einstellungen → Apps → "WireGuard Auto-Switch" → Deinstallieren.
+Windows-Einstellungen → Apps → "GuardSwitch" → Deinstallieren.
 Danach ist alles weg, dein WireGuard selbst bleibt unangetastet.
 
 ---
@@ -160,7 +160,7 @@ reachable_port = 22               # Port darauf
 
 **Tray-Symbol zeigt rot ("Service nicht erreichbar")**
 Der Hintergrunddienst läuft nicht. Computer neu starten, oder über
-`services.msc` den Dienst "WireGuard Auto-Switch" manuell starten.
+`services.msc` den Dienst "GuardSwitch" manuell starten.
 
 **Tray-Symbol bleibt grau / kein automatischer Wechsel**
 Auto-Modus ist pausiert. Rechtsklick → "Auto-Modus aktivieren".
@@ -177,7 +177,7 @@ Im Status steht dann "NotInstalled". Prüfen: in WireGuard nachsehen, wie
 der Tunnel exakt heißt, dann in der Config korrigieren und neu laden.
 
 **Ich will doch alles wegmachen**
-Windows-Einstellungen → Apps → "WireGuard Auto-Switch" → Deinstallieren.
+Windows-Einstellungen → Apps → "GuardSwitch" → Deinstallieren.
 Bei der Frage "Konfigurationsdatei behalten?" auf **Nein** klicken.
 WireGuard selbst bleibt installiert und unverändert.
 
