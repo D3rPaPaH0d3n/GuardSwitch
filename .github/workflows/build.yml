@@ -1,7 +1,7 @@
 name: Build GuardSwitch
 
 on:
-  # Manuell: leer lassen = nur Build-Test (Artifact, kein Release).
+  # Manuell: leer lassen = nur Build-Test (Artifacts, kein Release).
   # Version eintragen (z.B. 1.0.0) = Tag erstellen, bauen, Release veröffentlichen.
   workflow_dispatch:
     inputs:
@@ -18,23 +18,21 @@ permissions:
   contents: write
 
 jobs:
-  build-windows:
-    runs-on: windows-latest
-
+  # Version einmal zentral bestimmen & validieren. Beide Build-Jobs und der
+  # Release-Job hängen davon ab, damit Windows- und Linux-Build dieselbe
+  # Versionsnummer verwenden und der Tag nur einmal erzeugt wird.
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      release: ${{ steps.version.outputs.release }}
+      create_tag: ${{ steps.version.outputs.create_tag }}
     steps:
       - name: Checkout
         uses: actions/checkout@v5
         with:
           # Tags brauchen wir für die Existenz-Prüfung
           fetch-depth: 0
-
-      - name: Setup .NET 8
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: '8.0.x'
-
-      - name: Install Inno Setup
-        run: choco install innosetup -y --no-progress
 
       - name: Determine version & validate
         id: version
@@ -65,6 +63,22 @@ jobs:
             echo "create_tag=false"    >> "$GITHUB_OUTPUT"
           fi
 
+  build-windows:
+    needs: version
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Install Inno Setup
+        run: choco install innosetup -y --no-progress
+
       - name: Publish Service (self-contained, single-file)
         run: >
           dotnet publish src\WgAutoswitch.Service\WgAutoswitch.Service.csproj
@@ -86,47 +100,18 @@ jobs:
       - name: Build Installer (Inno Setup)
         run: |
           & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" `
-            /DMyAppVersion=${{ steps.version.outputs.version }} `
+            /DMyAppVersion=${{ needs.version.outputs.version }} `
             installer\guardswitch.iss
 
       - name: Upload Installer Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: guardswitch-installer-${{ steps.version.outputs.version }}
+          name: guardswitch-installer-${{ needs.version.outputs.version }}
           path: installer\output\*.exe
           if-no-files-found: error
 
-      # Tag erst NACH erfolgreichem Build erstellen, damit kein "leerer" Tag
-      # entsteht, falls der Build vorher schon scheitert.
-      - name: Create and push release tag
-        if: steps.version.outputs.create_tag == 'true'
-        shell: bash
-        run: |
-          tag="v${{ steps.version.outputs.version }}"
-          git config user.name  "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git tag -a "$tag" -m "Release $tag"
-          git push origin "$tag"
-
-      - name: Create GitHub Release
-        if: steps.version.outputs.release == 'true'
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: v${{ steps.version.outputs.version }}
-          name: GuardSwitch ${{ steps.version.outputs.version }}
-          files: installer/output/*.exe
-          generate_release_notes: true
-          body: |
-            **Installer:** `guardswitch-setup-${{ steps.version.outputs.version }}.exe`
-
-            Voraussetzung: [WireGuard für Windows](https://www.wireguard.com/install/)
-            mit mindestens einem eingerichteten Tunnel.
-
-            Beim ersten Start zeigt Windows eine SmartScreen-Warnung
-            ("Unbekannter Herausgeber") - der Installer ist nicht
-            code-signed. "Weitere Infos" → "Trotzdem ausführen".
-
   build-linux:
+    needs: version
     runs-on: ubuntu-latest
 
     steps:
@@ -172,3 +157,55 @@ jobs:
           name: guardswitch-linux-x64
           path: guardswitch-linux-x64.tar.gz
           if-no-files-found: error
+
+  # Ein Release pro Version mit BEIDEN Plattformen dran. Läuft erst, wenn
+  # Windows- und Linux-Build erfolgreich sind, sammelt beide Artifacts ein und
+  # erstellt (bei manueller Version) zuerst den Tag.
+  release:
+    needs: [version, build-windows, build-linux]
+    if: needs.version.outputs.release == 'true'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Download all build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      # Tag erst NACH erfolgreichen Builds erstellen, damit kein "leerer" Tag
+      # entsteht, falls ein Build vorher schon scheitert.
+      - name: Create and push release tag
+        if: needs.version.outputs.create_tag == 'true'
+        shell: bash
+        run: |
+          tag="v${{ needs.version.outputs.version }}"
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "$tag" -m "Release $tag"
+          git push origin "$tag"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ needs.version.outputs.version }}
+          name: GuardSwitch ${{ needs.version.outputs.version }}
+          files: |
+            artifacts/**/*.exe
+            artifacts/**/*.tar.gz
+          generate_release_notes: true
+          body: |
+            **Windows:** `guardswitch-setup-${{ needs.version.outputs.version }}.exe`
+            **Linux (x64):** `guardswitch-linux-x64.tar.gz`
+
+            **Windows-Voraussetzung:** [WireGuard für Windows](https://www.wireguard.com/install/)
+            mit mindestens einem eingerichteten Tunnel. Beim ersten Start zeigt
+            Windows eine SmartScreen-Warnung ("Unbekannter Herausgeber") – der
+            Installer ist nicht code-signed. "Weitere Infos" → "Trotzdem ausführen".
+
+            **Linux-Voraussetzung:** NetworkManager mit importiertem WireGuard-Profil.
+            Installation siehe `LINUX.md` im Tarball.
