@@ -10,6 +10,25 @@ nmcli connection show
 The `[[tunnels]].name` value in `/etc/guardswitch/config.toml` must match the
 NetworkManager connection name.
 
+## Install on Linux Mint / Ubuntu / Debian (.deb, recommended)
+
+Download `guardswitch_<version>_amd64.deb` from the Releases page and
+**double-click it** – the graphical package installer opens, you click
+*Install*, enter your password, done. It registers and starts the systemd
+service and sets up the tray autostart automatically.
+
+From the terminal it's:
+
+```bash
+sudo apt install ./guardswitch_2.0.1_amd64.deb
+```
+
+Uninstall via the Software Manager, or `sudo apt remove guardswitch`
+(`sudo apt purge guardswitch` also removes the config).
+
+Afterwards import your WireGuard profile (see above), adjust
+`/etc/guardswitch/config.toml` and run `sudo systemctl restart guardswitch`.
+
 ## Install from the release tarball
 
 Download `guardswitch-linux-x64.tar.gz` from the Releases page, extract it and

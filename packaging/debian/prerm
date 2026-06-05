@@ -1,0 +1,11 @@
+#!/bin/sh
+# Vor dem Entfernen der Dateien: Dienst stoppen und deaktivieren.
+set -e
+
+case "$1" in
+  remove|deconfigure)
+    systemctl disable --now guardswitch.service || true
+    ;;
+esac
+
+exit 0

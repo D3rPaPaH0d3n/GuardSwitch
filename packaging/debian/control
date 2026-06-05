@@ -1,0 +1,15 @@
+Package: guardswitch
+Version: @VERSION@
+Section: net
+Priority: optional
+Architecture: amd64
+Depends: network-manager
+Installed-Size: @INSTALLED_SIZE@
+Maintainer: D3rPaPaH0d3n <waiwi.kainer@gmail.com>
+Homepage: https://github.com/D3rPaPaH0d3n/GuardSwitch
+Description: Automatic WireGuard tunnel switch
+ GuardSwitch turns your WireGuard tunnel off at home and on when away,
+ based on network detection (gateway MAC, Wi-Fi SSID, reachable host).
+ A tray app shows the current state and lets you pause the automatic
+ mode or switch the tunnel manually. The tunnel itself is managed
+ through NetworkManager.
