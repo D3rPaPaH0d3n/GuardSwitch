@@ -1,0 +1,13 @@
+#!/bin/sh
+# Nach dem Entpacken der Dateien: Dienst registrieren und starten.
+set -e
+
+case "$1" in
+  configure)
+    systemctl daemon-reload || true
+    # Beim ersten Start legt der Dienst /etc/guardswitch/config.toml mit Defaults an.
+    systemctl enable --now guardswitch.service || true
+    ;;
+esac
+
+exit 0

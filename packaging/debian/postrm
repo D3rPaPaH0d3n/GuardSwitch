@@ -1,0 +1,16 @@
+#!/bin/sh
+# Nach dem Entfernen: systemd aufräumen. Bei "purge" auch Config und Log löschen.
+set -e
+
+case "$1" in
+  remove)
+    systemctl daemon-reload || true
+    ;;
+  purge)
+    systemctl daemon-reload || true
+    rm -rf /etc/guardswitch
+    rm -f /var/log/guardswitch.log
+    ;;
+esac
+
+exit 0

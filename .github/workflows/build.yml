@@ -153,11 +153,21 @@ jobs:
           cp LINUX.md README.md LICENSE dist/guardswitch-linux-x64/
           tar -C dist -czf guardswitch-linux-x64.tar.gz guardswitch-linux-x64
 
+      - name: Build .deb package
+        run: |
+          packaging/debian/build-deb.sh \
+            "${{ needs.version.outputs.version }}" \
+            src/WgAutoswitch.Service/bin/Release/net8.0/linux-x64/publish/WgAutoswitch.Service \
+            src/WgAutoswitch.LinuxTray/bin/Release/net8.0/linux-x64/publish/WgAutoswitch.LinuxTray \
+            .
+
       - name: Upload Linux Artifact
         uses: actions/upload-artifact@v4
         with:
           name: guardswitch-linux-x64
-          path: guardswitch-linux-x64.tar.gz
+          path: |
+            guardswitch-linux-x64.tar.gz
+            guardswitch_*_amd64.deb
           if-no-files-found: error
 
   # Ein Release pro Version mit BEIDEN Plattformen dran. Läuft erst, wenn
@@ -198,11 +208,13 @@ jobs:
           name: GuardSwitch ${{ needs.version.outputs.version }}
           files: |
             artifacts/**/*.exe
+            artifacts/**/*.deb
             artifacts/**/*.tar.gz
           generate_release_notes: true
           body: |
             **Windows:** `guardswitch-setup-${{ needs.version.outputs.version }}.exe`
-            **Linux (x64):** `guardswitch-linux-x64.tar.gz`
+            **Linux Mint / Ubuntu / Debian:** `guardswitch_${{ needs.version.outputs.version }}_amd64.deb` (Doppelklick → Installieren)
+            **Linux (anderes / portable):** `guardswitch-linux-x64.tar.gz`
 
             **Windows-Voraussetzung:** [WireGuard für Windows](https://www.wireguard.com/install/)
             mit mindestens einem eingerichteten Tunnel. Beim ersten Start zeigt
