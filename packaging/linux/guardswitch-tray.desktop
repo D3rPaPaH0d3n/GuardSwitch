@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=GuardSwitch
+Comment=WireGuard automatisch zuhause ausschalten und unterwegs einschalten
+Exec=/opt/guardswitch/WgAutoswitch.LinuxTray
+Icon=network-vpn
+Terminal=false
+Categories=Network;Utility;
+X-GNOME-Autostart-enabled=true

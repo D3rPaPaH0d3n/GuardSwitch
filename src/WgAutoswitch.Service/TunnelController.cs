@@ -1,13 +1,15 @@
 using System.Diagnostics;
+using System.Runtime.Versioning;
 using System.ServiceProcess;
 using Microsoft.Extensions.Logging;
 using WgAutoswitch.Shared;
 
 namespace WgAutoswitch.Service;
 
-public class TunnelController
+[SupportedOSPlatform("windows")]
+public class WindowsTunnelController : ITunnelController
 {
-    private readonly ILogger<TunnelController> _log;
+    private readonly ILogger<WindowsTunnelController> _log;
 
     // Standard-Pfad von WireGuard für Windows
     private static readonly string WireGuardExe = Path.Combine(
@@ -18,7 +20,7 @@ public class TunnelController
         Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
         "WireGuard", "Data", "Configurations");
 
-    public TunnelController(ILogger<TunnelController> log)
+    public WindowsTunnelController(ILogger<WindowsTunnelController> log)
     {
         _log = log;
     }

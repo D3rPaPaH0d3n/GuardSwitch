@@ -12,9 +12,9 @@ public class PipeHostedService : BackgroundService
 {
     private readonly ILogger<PipeHostedService> _log;
     private readonly ServiceState _state;
-    private readonly TunnelController _controller;
+    private readonly ITunnelController _controller;
 
-    public PipeHostedService(ILogger<PipeHostedService> log, ServiceState state, TunnelController controller)
+    public PipeHostedService(ILogger<PipeHostedService> log, ServiceState state, ITunnelController controller)
     {
         _log = log;
         _state = state;
@@ -51,23 +51,7 @@ public class PipeHostedService : BackgroundService
 
     private async Task ServeOneClientAsync(CancellationToken ct)
     {
-        // ACL: alle authentifizierten User auf der Maschine dürfen lesen/schreiben.
-        // Damit funktioniert die Pipe vom User-Tray gegen den LocalSystem-Service.
-        var ps = new PipeSecurity();
-        var sid = new SecurityIdentifier(WellKnownSidType.AuthenticatedUserSid, null);
-        ps.AddAccessRule(new PipeAccessRule(sid,
-            PipeAccessRights.ReadWrite | PipeAccessRights.CreateNewInstance,
-            AccessControlType.Allow));
-
-        using var server = NamedPipeServerStreamAcl.Create(
-            Paths.PipeName,
-            PipeDirection.InOut,
-            NamedPipeServerStream.MaxAllowedServerInstances,
-            PipeTransmissionMode.Byte,
-            PipeOptions.Asynchronous,
-            inBufferSize: 8192,
-            outBufferSize: 8192,
-            pipeSecurity: ps);
+        using var server = CreatePipeServer();
 
         await server.WaitForConnectionAsync(ct);
         try
@@ -86,6 +70,39 @@ public class PipeHostedService : BackgroundService
         {
             try { server.Disconnect(); } catch { }
         }
+    }
+
+    private static NamedPipeServerStream CreatePipeServer()
+    {
+        if (!OperatingSystem.IsWindows())
+        {
+            return new NamedPipeServerStream(
+                Paths.PipeName,
+                PipeDirection.InOut,
+                NamedPipeServerStream.MaxAllowedServerInstances,
+                PipeTransmissionMode.Byte,
+                PipeOptions.Asynchronous,
+                inBufferSize: 8192,
+                outBufferSize: 8192);
+        }
+
+        // ACL: alle authentifizierten User auf der Maschine dürfen lesen/schreiben.
+        // Damit funktioniert die Pipe vom User-Tray gegen den LocalSystem-Service.
+        var ps = new PipeSecurity();
+        var sid = new SecurityIdentifier(WellKnownSidType.AuthenticatedUserSid, null);
+        ps.AddAccessRule(new PipeAccessRule(sid,
+            PipeAccessRights.ReadWrite | PipeAccessRights.CreateNewInstance,
+            AccessControlType.Allow));
+
+        return NamedPipeServerStreamAcl.Create(
+            Paths.PipeName,
+            PipeDirection.InOut,
+            NamedPipeServerStream.MaxAllowedServerInstances,
+            PipeTransmissionMode.Byte,
+            PipeOptions.Asynchronous,
+            inBufferSize: 8192,
+            outBufferSize: 8192,
+            pipeSecurity: ps);
     }
 
     private async Task<CommandResponse> HandleAsync(Command? cmd, CancellationToken ct)

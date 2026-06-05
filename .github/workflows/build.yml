@@ -18,7 +18,7 @@ permissions:
   contents: write
 
 jobs:
-  build:
+  build-windows:
     runs-on: windows-latest
 
     steps:
@@ -125,3 +125,50 @@ jobs:
             Beim ersten Start zeigt Windows eine SmartScreen-Warnung
             ("Unbekannter Herausgeber") - der Installer ist nicht
             code-signed. "Weitere Infos" → "Trotzdem ausführen".
+
+  build-linux:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Publish Service
+        run: >
+          dotnet publish src/WgAutoswitch.Service/WgAutoswitch.Service.csproj
+          -c Release
+          -r linux-x64
+          --self-contained
+          -p:PublishSingleFile=true
+          -p:IncludeNativeLibrariesForSelfExtract=true
+
+      - name: Publish Linux Tray
+        run: >
+          dotnet publish src/WgAutoswitch.LinuxTray/WgAutoswitch.LinuxTray.csproj
+          -c Release
+          -r linux-x64
+          --self-contained
+          -p:PublishSingleFile=true
+          -p:IncludeNativeLibrariesForSelfExtract=true
+
+      - name: Package Linux tarball
+        run: |
+          mkdir -p dist/guardswitch-linux-x64/packaging/linux
+          cp src/WgAutoswitch.Service/bin/Release/net8.0/linux-x64/publish/WgAutoswitch.Service dist/guardswitch-linux-x64/
+          cp src/WgAutoswitch.LinuxTray/bin/Release/net8.0/linux-x64/publish/WgAutoswitch.LinuxTray dist/guardswitch-linux-x64/
+          cp packaging/linux/guardswitch.service dist/guardswitch-linux-x64/packaging/linux/
+          cp packaging/linux/guardswitch-tray.desktop dist/guardswitch-linux-x64/packaging/linux/
+          cp LINUX.md README.md LICENSE dist/guardswitch-linux-x64/
+          tar -C dist -czf guardswitch-linux-x64.tar.gz guardswitch-linux-x64
+
+      - name: Upload Linux Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: guardswitch-linux-x64
+          path: guardswitch-linux-x64.tar.gz
+          if-no-files-found: error

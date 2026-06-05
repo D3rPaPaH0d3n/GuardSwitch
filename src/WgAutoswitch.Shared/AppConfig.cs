@@ -192,8 +192,13 @@ public class HomeDetectionConfig
 public static class Paths
 {
     public static string ConfigDir =>
-        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "guardswitch");
+        OperatingSystem.IsWindows()
+            ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "guardswitch")
+            : "/etc/guardswitch";
     public static string ConfigFile => Path.Combine(ConfigDir, "config.toml");
-    public static string LogFile => Path.Combine(ConfigDir, "log.txt");
+    public static string LogFile =>
+        OperatingSystem.IsWindows()
+            ? Path.Combine(ConfigDir, "log.txt")
+            : "/var/log/guardswitch.log";
     public const string PipeName = "guardswitch";
 }

@@ -151,18 +151,11 @@ public class NetworkDetector
     {
         try
         {
-            var psi = new ProcessStartInfo("arp", $"-a {gateway}")
-            {
-                RedirectStandardOutput = true,
-                UseShellExecute = false,
-                CreateNoWindow = true
-            };
-            using var p = Process.Start(psi);
-            if (p == null) return null;
-            var output = p.StandardOutput.ReadToEnd();
-            p.WaitForExit(2000);
+            var output = OperatingSystem.IsWindows()
+                ? RunCommand("arp", "-a", gateway.ToString())
+                : RunCommand("ip", "neigh", "show", gateway.ToString());
 
-            var match = Regex.Match(output, @"([0-9A-Fa-f]{2}-){5}[0-9A-Fa-f]{2}");
+            var match = Regex.Match(output, @"([0-9A-Fa-f]{2}[:-]){5}[0-9A-Fa-f]{2}");
             return match.Success ? NormalizeMac(match.Value) : null;
         }
         catch (Exception ex)
@@ -175,6 +168,9 @@ public class NetworkDetector
     // Liefert (ssid, hasWifi): hasWifi=false heißt "kein WLAN-Adapter aktiv" → Unknown.
     private (string? Ssid, bool HasWifi) GetCurrentSsid()
     {
+        if (!OperatingSystem.IsWindows())
+            return GetCurrentSsidLinux();
+
         try
         {
             var psi = new ProcessStartInfo("netsh", "wlan show interfaces")
@@ -214,6 +210,34 @@ public class NetworkDetector
         }
     }
 
+    private (string? Ssid, bool HasWifi) GetCurrentSsidLinux()
+    {
+        try
+        {
+            var output = RunCommand("nmcli", "-t", "-f", "ACTIVE,SSID", "dev", "wifi");
+            foreach (var line in output.Split('\n', StringSplitOptions.RemoveEmptyEntries))
+            {
+                var idx = line.IndexOf(':');
+                if (idx <= 0) continue;
+                var active = line[..idx];
+                var ssid = line[(idx + 1)..].Replace("\\:", ":").Trim();
+                if (active == "yes")
+                    return (string.IsNullOrEmpty(ssid) ? null : ssid, true);
+            }
+
+            // Fallback für minimalere Systeme ohne aktives NetworkManager-WLAN-Listing.
+            output = RunCommand("iwgetid", "-r").Trim();
+            if (!string.IsNullOrWhiteSpace(output)) return (output, true);
+
+            return (null, false);
+        }
+        catch (Exception ex)
+        {
+            _log.LogWarning(ex, "SSID konnte nicht ermittelt werden");
+            return (null, false);
+        }
+    }
+
     private async Task<bool> IsReachableAsync(string host, int port, TimeSpan timeout,
                                               int retries, CancellationToken ct)
     {
@@ -243,5 +267,23 @@ public class NetworkDetector
         {
             return false;
         }
+    }
+
+    private static string RunCommand(string fileName, params string[] args)
+    {
+        var psi = new ProcessStartInfo(fileName)
+        {
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+            CreateNoWindow = true
+        };
+        foreach (var arg in args) psi.ArgumentList.Add(arg);
+
+        using var p = Process.Start(psi);
+        if (p == null) return "";
+        var output = p.StandardOutput.ReadToEnd();
+        p.WaitForExit(2000);
+        return output;
     }
 }

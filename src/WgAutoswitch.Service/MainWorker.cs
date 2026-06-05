@@ -10,7 +10,7 @@ public class MainWorker : BackgroundService
     private readonly ILogger<MainWorker> _log;
     private readonly ServiceState _state;
     private readonly NetworkDetector _detector;
-    private readonly TunnelController _controller;
+    private readonly ITunnelController _controller;
 
     // Hysterese: zähle aufeinanderfolgende identische Detection-Ergebnisse
     private bool? _lastSeen;
@@ -26,7 +26,7 @@ public class MainWorker : BackgroundService
     private int _applyFailures;
 
     public MainWorker(ILogger<MainWorker> log, ServiceState state,
-                      NetworkDetector detector, TunnelController controller)
+                      NetworkDetector detector, ITunnelController controller)
     {
         _log = log;
         _state = state;

@@ -1,0 +1,26 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="WgAutoswitch.LinuxTray.MainWindow"
+        Width="420"
+        Height="280"
+        MinWidth="360"
+        MinHeight="240"
+        Title="GuardSwitch"
+        WindowStartupLocation="CenterScreen">
+  <Grid RowDefinitions="Auto,*,Auto" Margin="18">
+    <StackPanel Spacing="4">
+      <TextBlock Text="GuardSwitch" FontSize="22" FontWeight="SemiBold" />
+      <TextBlock Name="StatusText" Text="Status wird geladen..." TextWrapping="Wrap" />
+    </StackPanel>
+
+    <Border Grid.Row="1" Margin="0,18" Padding="12" BorderBrush="#33000000" BorderThickness="1" CornerRadius="6">
+      <StackPanel Name="TunnelPanel" Spacing="8" />
+    </Border>
+
+    <Grid Grid.Row="2" ColumnDefinitions="*,Auto,Auto,Auto">
+      <Button Name="RefreshButton" Grid.Column="1" Margin="0,0,8,0" Content="Aktualisieren" />
+      <Button Name="PauseButton" Grid.Column="2" Margin="0,0,8,0" Content="Auto pausieren" />
+      <Button Name="ReloadButton" Grid.Column="3" Content="Config neu laden" />
+    </Grid>
+  </Grid>
+</Window>

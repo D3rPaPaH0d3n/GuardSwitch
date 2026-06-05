@@ -6,6 +6,8 @@ obj/
 
 # Inno Setup output
 installer/output/
+dist/
+guardswitch-*.tar.gz
 
 # Visual Studio / Rider / VS Code
 .vs/
