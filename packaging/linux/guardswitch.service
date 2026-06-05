@@ -8,6 +8,10 @@ Type=simple
 ExecStart=/opt/guardswitch/WgAutoswitch.Service
 Restart=on-failure
 RestartSec=3
+# WICHTIG: PrivateTmp NICHT aktivieren. Die IPC zum User-Tray laeuft ueber einen
+# Unix-Socket unter /tmp (/tmp/CoreFxPipe_guardswitch). Ein privates /tmp wuerde
+# den Tray dauerhaft vom Service abschneiden ("Service nicht erreichbar").
+PrivateTmp=no
 
 [Install]
 WantedBy=multi-user.target

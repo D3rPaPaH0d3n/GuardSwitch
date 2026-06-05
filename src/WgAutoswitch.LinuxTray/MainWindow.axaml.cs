@@ -3,6 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.Platform;
 using Avalonia.Threading;
 using WgAutoswitch.Shared;
 
@@ -20,6 +21,7 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        Icon = LoadAppIcon();
 
         RefreshButton.Click += async (_, _) => await RefreshAsync();
         PauseButton.Click += async (_, _) => await TogglePauseAsync();
@@ -40,8 +42,14 @@ public partial class MainWindow : Window
         _ = RefreshAsync();
     }
 
+    private static WindowIcon LoadAppIcon() =>
+        new(AssetLoader.Open(new Uri("avares://WgAutoswitch.LinuxTray/Assets/app.ico")));
+
     private void BuildTray()
     {
+        // Ohne Icon zeigt der Linux-Systray (StatusNotifierItem) den Eintrag gar
+        // nicht erst an – das Icon ist hier also Pflicht, nicht Deko.
+        _trayIcon.Icon = LoadAppIcon();
         _trayIcon.ToolTipText = AppName;
         _trayIcon.Menu = new NativeMenu
         {

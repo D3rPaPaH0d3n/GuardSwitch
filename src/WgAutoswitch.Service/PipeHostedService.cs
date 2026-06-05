@@ -72,11 +72,11 @@ public class PipeHostedService : BackgroundService
         }
     }
 
-    private static NamedPipeServerStream CreatePipeServer()
+    private NamedPipeServerStream CreatePipeServer()
     {
         if (!OperatingSystem.IsWindows())
         {
-            return new NamedPipeServerStream(
+            var server = new NamedPipeServerStream(
                 Paths.PipeName,
                 PipeDirection.InOut,
                 NamedPipeServerStream.MaxAllowedServerInstances,
@@ -84,6 +84,15 @@ public class PipeHostedService : BackgroundService
                 PipeOptions.Asynchronous,
                 inBufferSize: 8192,
                 outBufferSize: 8192);
+
+            // Auf Linux ist die "Named Pipe" ein Unix-Domain-Socket unter
+            // /tmp/CoreFxPipe_<name>. Der als root laufende Service legt ihn mit
+            // umask-Default (typ. 0755) an – der User-Tray hat dann KEINE Schreib-
+            // rechte und kann sich nicht verbinden ("Service nicht erreichbar").
+            // Wir öffnen den Socket daher explizit für alle. Das ist das Pendant zur
+            // Windows-ACL weiter unten (AuthenticatedUserSid: ReadWrite).
+            RelaxLinuxPipePermissions();
+            return server;
         }
 
         // ACL: alle authentifizierten User auf der Maschine dürfen lesen/schreiben.
@@ -103,6 +112,25 @@ public class PipeHostedService : BackgroundService
             inBufferSize: 8192,
             outBufferSize: 8192,
             pipeSecurity: ps);
+    }
+
+    [System.Runtime.Versioning.UnsupportedOSPlatform("windows")]
+    private void RelaxLinuxPipePermissions()
+    {
+        try
+        {
+            var path = Path.Combine(Path.GetTempPath(), "CoreFxPipe_" + Paths.PipeName);
+            if (!File.Exists(path)) return;
+            File.SetUnixFileMode(path,
+                UnixFileMode.UserRead | UnixFileMode.UserWrite |
+                UnixFileMode.GroupRead | UnixFileMode.GroupWrite |
+                UnixFileMode.OtherRead | UnixFileMode.OtherWrite);
+        }
+        catch (Exception ex)
+        {
+            _log.LogWarning(ex, "Pipe-Berechtigungen konnten nicht gesetzt werden – " +
+                                "der Tray erreicht den Service evtl. nicht");
+        }
     }
 
     private async Task<CommandResponse> HandleAsync(Command? cmd, CancellationToken ct)
