@@ -10,6 +10,24 @@ nmcli connection show
 The `[[tunnels]].name` value in `/etc/guardswitch/config.toml` must match the
 NetworkManager connection name.
 
+## Install from the release tarball
+
+Download `guardswitch-linux-x64.tar.gz` from the Releases page, extract it and
+run the installer:
+
+```bash
+tar xzf guardswitch-linux-x64.tar.gz
+cd guardswitch-linux-x64
+sudo ./install.sh
+```
+
+The installer copies the binaries to `/opt/guardswitch`, enables the systemd
+service and sets up the tray autostart for your desktop user. Then import your
+WireGuard profile (see above), adjust `/etc/guardswitch/config.toml` and run
+`sudo systemctl restart guardswitch`.
+
+Uninstall with `sudo ./uninstall.sh` (add `--purge` to also remove the config).
+
 ## Manual development install
 
 Publish the service and tray app:
