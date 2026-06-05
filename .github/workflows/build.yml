@@ -148,6 +148,8 @@ jobs:
           cp src/WgAutoswitch.LinuxTray/bin/Release/net8.0/linux-x64/publish/WgAutoswitch.LinuxTray dist/guardswitch-linux-x64/
           cp packaging/linux/guardswitch.service dist/guardswitch-linux-x64/packaging/linux/
           cp packaging/linux/guardswitch-tray.desktop dist/guardswitch-linux-x64/packaging/linux/
+          install -m 0755 packaging/linux/install.sh   dist/guardswitch-linux-x64/install.sh
+          install -m 0755 packaging/linux/uninstall.sh dist/guardswitch-linux-x64/uninstall.sh
           cp LINUX.md README.md LICENSE dist/guardswitch-linux-x64/
           tar -C dist -czf guardswitch-linux-x64.tar.gz guardswitch-linux-x64
 
