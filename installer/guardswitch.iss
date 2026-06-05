@@ -57,8 +57,9 @@ Name: "autostart"; Description: "Tray-Symbol bei Windows-Anmeldung automatisch s
 
 [Files]
 ; Service-Binary - alle Dateien aus dem Publish-Output
-; Pfad enthält "win-x64", weil dotnet publish mit -r win-x64 einen RID-Subordner anlegt
-Source: "..\src\WgAutoswitch.Service\bin\Release\net8.0-windows\win-x64\publish\*"; DestDir: "{app}\service"; Flags: ignoreversion recursesubdirs createallsubdirs
+; Pfad enthält "win-x64", weil dotnet publish mit -r win-x64 einen RID-Subordner anlegt.
+; Service ist seit dem Linux-Port plattformneutral (net8.0, NICHT net8.0-windows).
+Source: "..\src\WgAutoswitch.Service\bin\Release\net8.0\win-x64\publish\*"; DestDir: "{app}\service"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 ; Tray-Binary
 Source: "..\src\WgAutoswitch.Tray\bin\Release\net8.0-windows\win-x64\publish\*"; DestDir: "{app}\tray"; Flags: ignoreversion recursesubdirs createallsubdirs
